@@ -1,11 +1,979 @@
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-<title>Admin</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZCC Demo Admin</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --brand: #4F46E5;
+    --brand-light: #EEF2FF;
+    --text: #111827;
+    --muted: #6B7280;
+    --border: #E5E7EB;
+    --bg: #F9FAFB;
+    --card: #FFFFFF;
+    --radius: 10px;
+    --shadow: 0 1px 3px rgba(0,0,0,.07), 0 4px 12px rgba(0,0,0,.05);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text);
+    background: var(--bg);
+    min-height: 100vh;
+  }
+
+  /* ── Top bar ── */
+  .topbar {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 0 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  }
+  .topbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 16px;
+  }
+  .topbar-dot {
+    width: 10px; height: 10px;
+    background: var(--brand);
+    border-radius: 50%;
+  }
+  .topbar-actions { display: flex; gap: 8px; align-items: center; }
+
+  /* ── Layout ── */
+  .layout {
+    display: flex;
+    min-height: calc(100vh - 56px);
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 220px;
+    border-right: 1px solid var(--border);
+    background: var(--card);
+    padding: 20px 12px;
+    flex-shrink: 0;
+  }
+  .sidebar-section {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--muted);
+    padding: 0 8px;
+    margin-bottom: 6px;
+    margin-top: 16px;
+  }
+  .sidebar-section:first-child { margin-top: 0; }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 10px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--muted);
+    transition: background .1s, color .1s;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+  }
+  .nav-item:hover { background: var(--bg); color: var(--text); }
+  .nav-item.active { background: var(--brand-light); color: var(--brand); font-weight: 600; }
+  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+
+  /* ── Main content ── */
+  .main {
+    flex: 1;
+    padding: 28px;
+    overflow-y: auto;
+  }
+
+  /* ── Tabs (content areas) ── */
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  /* ── Page header ── */
+  .page-header {
+    margin-bottom: 24px;
+  }
+  .page-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .page-subtitle { color: var(--muted); font-size: 13px; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 20px 22px;
+    margin-bottom: 20px;
+  }
+  .card-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* ── CRM Grid ── */
+  .crm-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+  }
+  .crm-card {
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 12px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    transition: border-color .15s, box-shadow .15s;
+    background: var(--card);
+    position: relative;
+    text-align: center;
+  }
+  .crm-card:hover { border-color: #C4B5FD; box-shadow: 0 0 0 3px #EDE9FE; }
+  .crm-card.selected { border-color: var(--crm-color, var(--brand)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--crm-color, var(--brand)) 20%, transparent); }
+  .crm-card.selected .crm-card-check { display: flex; }
+  .crm-logo-wrap {
+    width: 56px; height: 40px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .crm-logo-wrap img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  .crm-card-name { font-size: 12px; font-weight: 600; color: var(--text); }
+  .crm-card-check {
+    display: none;
+    position: absolute;
+    top: 8px; right: 8px;
+    width: 18px; height: 18px;
+    background: var(--crm-color, var(--brand));
+    border-radius: 50%;
+    align-items: center; justify-content: center;
+  }
+  .crm-card-check svg { width: 10px; height: 10px; fill: white; }
+
+  /* ── Color swatch ── */
+  .color-swatch {
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    margin-top: 2px;
+  }
+
+  /* ── Current config strip ── */
+  .config-strip {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--brand-light);
+    border-radius: 8px;
+    margin-top: 16px;
+    font-size: 13px;
+  }
+  .config-strip img { height: 24px; }
+  .config-strip strong { color: var(--brand); }
+
+  /* ── Label flavor pills ── */
+  .flavor-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  .flavor-pill {
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1.5px solid var(--border);
+    cursor: pointer;
+    background: white;
+    color: var(--muted);
+    transition: all .12s;
+  }
+  .flavor-pill:hover { border-color: var(--brand); color: var(--brand); }
+  .flavor-pill.active { border-color: var(--brand); background: var(--brand); color: white; }
+
+  /* ── Form grid ── */
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px 20px;
+  }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group.full { grid-column: 1 / -1; }
+  .form-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--muted);
+  }
+  input[type="text"], input[type="color"] {
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--text);
+    font-family: inherit;
+    width: 100%;
+  }
+  input[type="color"] {
+    height: 36px;
+    padding: 2px 4px;
+    cursor: pointer;
+  }
+  input:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px #EDE9FE; }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 16px;
+    border: none;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: filter .15s;
+    white-space: nowrap;
+  }
+  .btn-primary { background: var(--brand); color: white; }
+  .btn-primary:hover { filter: brightness(.92); }
+  .btn-secondary { background: white; color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: #F9FAFB; }
+  .btn-danger { background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA; }
+  .btn-danger:hover { background: #FECACA; }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+
+  /* ── Table ── */
+  .table-wrap { overflow-x: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--muted);
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #F3F4F6;
+    vertical-align: middle;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #FAFAFA; }
+
+  .scenario-key { font-family: monospace; font-size: 12px; color: var(--brand); font-weight: 600; }
+  .active-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #059669;
+    background: #D1FAE5;
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+  .active-dot { width: 6px; height: 6px; background: #059669; border-radius: 50%; }
+
+  /* ── Add form ── */
+  .add-form {
+    display: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    margin-top: 16px;
+    background: #FAFAFA;
+  }
+  .add-form.open { display: block; }
+
+  /* ── Active scenario picker ── */
+  .scenario-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 16px;
+  }
+  .scenario-bar label { font-weight: 600; font-size: 13px; white-space: nowrap; }
+  select {
+    flex: 1;
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--text);
+    font-family: inherit;
+    background: white;
+  }
+  select:focus { outline: none; border-color: var(--brand); }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #111827;
+    color: white;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    z-index: 200;
+    box-shadow: 0 4px 16px rgba(0,0,0,.2);
+    animation: fadeUp .2s ease;
+  }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(6px) } to { opacity:1; transform:translateY(0) } }
+
+  /* ── Loading ── */
+  .inline-loading { color: var(--muted); font-size: 13px; padding: 20px 0; }
+</style>
 </head>
-
 <body>
-<h1>Admin Panel</h1>
-<p>Configuration coming soon</p>
-</body>
 
+<!-- Top bar -->
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="topbar-dot"></div>
+    ZCC Demo Admin
+  </div>
+  <div class="topbar-actions">
+    <span id="statusPill" style="font-size:12px;color:var(--muted)">Loading…</span>
+    <button class="btn btn-secondary" onclick="doReset()">Reset to defaults</button>
+  </div>
+</div>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-section">Configuration</div>
+    <button class="nav-item active" data-tab="branding" onclick="switchTab('branding', this)">
+      <span class="nav-icon">🎨</span> CRM Branding
+    </button>
+    <button class="nav-item" data-tab="labels" onclick="switchTab('labels', this)">
+      <span class="nav-icon">🏷️</span> Labels
+    </button>
+    <div class="sidebar-section">Demo</div>
+    <button class="nav-item" data-tab="seeds" onclick="switchTab('seeds', this)">
+      <span class="nav-icon">📋</span> Demo Scenarios
+    </button>
+  </nav>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- ── TAB: CRM BRANDING ── -->
+    <div id="tab-branding" class="tab-pane active">
+      <div class="page-header">
+        <div class="page-title">CRM Branding</div>
+        <div class="page-subtitle">Choose which CRM the agent app should appear to be connected to.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Select CRM</div>
+        <div class="crm-grid" id="crmGrid">
+          <!-- Populated by JS -->
+        </div>
+        <div class="config-strip" id="configStrip" style="display:none">
+          <img id="stripLogo" src="" alt="">
+          <div>Currently showing <strong id="stripName"></strong> branding •
+            <span id="stripColors" style="color:var(--muted)"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Custom Colours</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Override the brand colours for the selected CRM, or fine-tune for your demo environment.</p>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Primary colour</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="color" id="colorPrimary" value="#4F46E5">
+              <input type="text" id="colorPrimaryHex" value="#4F46E5" style="flex:1;font-family:monospace;font-size:12px">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Accent colour</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="color" id="colorAccent" value="#3730A3">
+              <input type="text" id="colorAccentHex" value="#3730A3" style="flex:1;font-family:monospace;font-size:12px">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Background tint</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="color" id="colorBg" value="#EEF2FF">
+              <input type="text" id="colorBgHex" value="#EEF2FF" style="flex:1;font-family:monospace;font-size:12px">
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:16px">
+          <button class="btn btn-primary" onclick="saveColours()">Save Colours</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB: LABELS ── -->
+    <div id="tab-labels" class="tab-pane">
+      <div class="page-header">
+        <div class="page-title">Labels & Terminology</div>
+        <div class="page-subtitle">Control what the agent app calls things. Pick a flavour preset or customise each label.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Record Flavour Presets</div>
+        <div class="flavor-row" id="flavorRow">
+          <!-- Populated by JS -->
+        </div>
+        <p style="font-size:12px;color:var(--muted)">Clicking a preset auto-fills the fields below. You can still override individually.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Label Overrides</div>
+        <div class="form-grid">
+          <div class="form-group full">
+            <label class="form-label">App Title</label>
+            <input type="text" id="lbl_app_title" placeholder="e.g. Salesforce Integration Demo">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Customer label</label>
+            <input type="text" id="lbl_customer_label" placeholder="e.g. Customer / Client / Contact">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tier / status label</label>
+            <input type="text" id="lbl_customer_tier_label" placeholder="e.g. Customer Tier / Status">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Primary record label</label>
+            <input type="text" id="lbl_primary_record_label" placeholder="e.g. Order / Case / Ticket">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Create label</label>
+            <input type="text" id="lbl_create_label" placeholder="e.g. New Order / Raise Ticket">
+          </div>
+          <div class="form-group full">
+            <label class="form-label">Recent records label</label>
+            <input type="text" id="lbl_recent_records_label" placeholder="e.g. Recent Orders / Case History">
+          </div>
+        </div>
+        <div style="margin-top:16px;display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="saveLabels()">Save Labels</button>
+          <button class="btn btn-secondary" onclick="loadCurrentConfig()">Discard changes</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB: DEMO SCENARIOS ── -->
+    <div id="tab-seeds" class="tab-pane">
+      <div class="page-header">
+        <div class="page-title">Demo Scenarios</div>
+        <div class="page-subtitle">Each scenario simulates a different inbound caller. Set the active one to control what the agent app shows.</div>
+      </div>
+
+      <div class="scenario-bar">
+        <label>Active Scenario:</label>
+        <select id="activeScenarioPicker">
+          <option value="">— loading —</option>
+        </select>
+        <button class="btn btn-primary" onclick="setActiveScenario()">Set Active</button>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div class="card-title" style="margin-bottom:0">Scenarios</div>
+          <button class="btn btn-secondary" onclick="toggleAddForm()">+ Add Scenario</button>
+        </div>
+
+        <div class="table-wrap">
+          <table id="seedsTable">
+            <thead>
+              <tr>
+                <th>Scenario Key</th>
+                <th>Phone</th>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Primary Record</th>
+                <th>Backend</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="seedsBody">
+              <tr><td colspan="7" class="inline-loading">Loading scenarios…</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Add scenario form -->
+        <div class="add-form" id="addForm">
+          <div style="font-size:14px;font-weight:600;margin-bottom:14px">New Scenario</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Scenario Key *</label>
+              <input type="text" id="new_scenario_key" placeholder="e.g. vip_customer_2">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Backend</label>
+              <select id="new_backend">
+                <option value="custom_crm">custom_crm (mock)</option>
+                <option value="salesforce">salesforce</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phone</label>
+              <input type="text" id="new_phone" placeholder="+447700900001">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input type="text" id="new_email" placeholder="name@example.com">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Customer Name</label>
+              <input type="text" id="new_customer_name" placeholder="Jane Smith">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Customer Status / Tier</label>
+              <input type="text" id="new_customer_status" placeholder="Gold / Active / VIP">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Primary Record Subject</label>
+              <input type="text" id="new_primary_subject" placeholder="Delayed order enquiry">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Primary Record Status</label>
+              <select id="new_primary_status">
+                <option value="New">New</option>
+                <option value="Open">Open</option>
+                <option value="Pending">Pending</option>
+                <option value="Closed">Closed</option>
+                <option value="Resolved">Resolved</option>
+                <option value="">— None / no primary record —</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Due Date</label>
+              <input type="text" id="new_primary_due_date" placeholder="Today / Tomorrow / Friday">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Recent Record Count</label>
+              <input type="text" id="new_recent_count" placeholder="2" value="2">
+            </div>
+          </div>
+          <div style="margin-top:14px;display:flex;gap:8px">
+            <button class="btn btn-primary" onclick="addScenario()">Add Scenario</button>
+            <button class="btn btn-secondary" onclick="toggleAddForm()">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ── CRM Definitions ──
+const CRMS = [
+  {
+    key: 'salesforce',
+    name: 'Salesforce',
+    primary: '#0176D3',
+    accent: '#032D60',
+    bg: '#F4F6F9'
+  },
+  {
+    key: 'servicenow',
+    name: 'ServiceNow',
+    primary: '#0C2B38',
+    accent: '#73E156',
+    bg: '#F0F9F0'
+  },
+  {
+    key: 'hubspot',
+    name: 'HubSpot',
+    primary: '#FF7A59',
+    accent: '#33475B',
+    bg: '#FFF4F1'
+  },
+  {
+    key: 'zendesk',
+    name: 'Zendesk',
+    primary: '#17494D',
+    accent: '#03363D',
+    bg: '#F0F7F7'
+  },
+  {
+    key: 'dynamics',
+    name: 'Dynamics 365',
+    primary: '#0078D4',
+    accent: '#002050',
+    bg: '#F0F6FF'
+  },
+  {
+    key: 'halo',
+    name: 'HaloITSM',
+    primary: '#2DCAB8',
+    accent: '#1BA99A',
+    bg: '#E6FAF8'
+  },
+  {
+    key: 'custom_crm',
+    name: 'Custom CRM',
+    primary: '#4F46E5',
+    accent: '#3730A3',
+    bg: '#EEF2FF'
+  }
+]
+
+const FLAVORS = {
+  Order:       { primary_record_label:'Order',       create_label:'New Order',        recent_records_label:'Recent Orders',       customer_label:'Customer', customer_tier_label:'Customer Tier' },
+  Case:        { primary_record_label:'Case',        create_label:'Raise Case',       recent_records_label:'Case History',        customer_label:'Customer', customer_tier_label:'Customer Tier' },
+  Ticket:      { primary_record_label:'Ticket',      create_label:'New Ticket',       recent_records_label:'Recent Tickets',      customer_label:'Customer', customer_tier_label:'Customer Status' },
+  Appointment: { primary_record_label:'Appointment', create_label:'New Appointment',  recent_records_label:'Recent Appointments', customer_label:'Client',   customer_tier_label:'Client Status' },
+  Booking:     { primary_record_label:'Booking',     create_label:'New Booking',      recent_records_label:'Recent Bookings',     customer_label:'Client',   customer_tier_label:'Client Tier' },
+  Payment:     { primary_record_label:'Payment',     create_label:'Record Payment',   recent_records_label:'Payment History',     customer_label:'Customer', customer_tier_label:'Account Status' }
+}
+
+let currentConfig = {}
+let selectedCrm = null
+let activeScenario = ''
+
+// ── Utilities ──
+function toast(msg, err = false) {
+  const t = document.createElement('div')
+  t.className = 'toast'
+  t.textContent = msg
+  if (err) t.style.background = '#DC2626'
+  document.body.appendChild(t)
+  setTimeout(() => t.remove(), 2800)
+}
+
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'))
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'))
+  document.getElementById('tab-' + id).classList.add('active')
+  btn.classList.add('active')
+  if (id === 'seeds') loadSeeds()
+}
+
+// ── Build CRM grid ──
+function buildCrmGrid() {
+  const grid = document.getElementById('crmGrid')
+  grid.innerHTML = CRMS.map(crm => `
+    <div class="crm-card" data-key="${crm.key}" style="--crm-color:${crm.primary}" onclick="selectCrm('${crm.key}')">
+      <div class="crm-card-check"><svg viewBox="0 0 10 8"><path d="M1 4l3 3 5-6" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="crm-logo-wrap">
+        <img src="/assets/logos/${crm.key}.svg" alt="${crm.name}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <div style="display:none;width:40px;height:40px;background:${crm.primary};border-radius:8px;color:white;font-weight:700;font-size:14px;align-items:center;justify-content:center">${crm.name.slice(0,2).toUpperCase()}</div>
+      </div>
+      <div class="crm-card-name">${crm.name}</div>
+      <div class="color-swatch" style="background:${crm.primary}"></div>
+    </div>
+  `).join('')
+}
+
+// ── Build flavor pills ──
+function buildFlavorPills() {
+  const row = document.getElementById('flavorRow')
+  row.innerHTML = Object.keys(FLAVORS).map(f =>
+    `<button class="flavor-pill" onclick="applyFlavor('${f}')">${f}</button>`
+  ).join('')
+}
+
+// ── Select CRM ──
+function selectCrm(key) {
+  selectedCrm = key
+  document.querySelectorAll('.crm-card').forEach(c => c.classList.remove('selected'))
+  document.querySelector(`.crm-card[data-key="${key}"]`)?.classList.add('selected')
+
+  const crm = CRMS.find(c => c.key === key)
+  if (!crm) return
+
+  // Update colour inputs
+  setColorInputs(crm.primary, crm.accent, crm.bg)
+
+  // Update strip
+  const strip = document.getElementById('configStrip')
+  strip.style.display = 'flex'
+  document.getElementById('stripLogo').src = `/assets/logos/${key}.svg`
+  document.getElementById('stripName').textContent = crm.name
+  document.getElementById('stripColors').textContent = `${crm.primary} · ${crm.accent}`
+
+  // Apply preset to config
+  applyPreset(key, crm)
+}
+
+async function applyPreset(key, crm) {
+  const res = await fetch('/api/admin/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ presetKey: key })
+  })
+  const d = await res.json()
+  if (d.ok) {
+    toast(`Switched to ${crm.name}`)
+    loadCurrentConfig()
+  } else toast('Failed to switch CRM', true)
+}
+
+// ── Colour inputs ──
+function setColorInputs(primary, accent, bg) {
+  document.getElementById('colorPrimary').value = primary
+  document.getElementById('colorPrimaryHex').value = primary
+  document.getElementById('colorAccent').value = accent
+  document.getElementById('colorAccentHex').value = accent
+  document.getElementById('colorBg').value = bg
+  document.getElementById('colorBgHex').value = bg
+}
+
+// Sync color picker ↔ hex input
+;['Primary','Accent','Bg'].forEach(name => {
+  const picker = document.getElementById('color' + name)
+  const hex    = document.getElementById('color' + name + 'Hex')
+  picker.addEventListener('input', () => hex.value = picker.value)
+  hex.addEventListener('input', () => {
+    if (/^#[0-9a-fA-F]{6}$/.test(hex.value)) picker.value = hex.value
+  })
+})
+
+async function saveColours() {
+  const res = await fetch('/api/admin/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      primary_hex: document.getElementById('colorPrimaryHex').value,
+      accent_hex:  document.getElementById('colorAccentHex').value,
+      secondary_hex: document.getElementById('colorBgHex').value
+    })
+  })
+  const d = await res.json()
+  if (d.ok) { toast('Colours saved'); loadCurrentConfig() }
+  else toast('Failed to save', true)
+}
+
+// ── Labels ──
+function applyFlavor(name) {
+  document.querySelectorAll('.flavor-pill').forEach(p => p.classList.toggle('active', p.textContent === name))
+  const f = FLAVORS[name]
+  if (!f) return
+  Object.entries(f).forEach(([k, v]) => {
+    const el = document.getElementById('lbl_' + k)
+    if (el) el.value = v
+  })
+}
+
+async function saveLabels() {
+  const fields = ['app_title','customer_label','primary_record_label','create_label','recent_records_label','customer_tier_label']
+  const body = {}
+  fields.forEach(f => {
+    const el = document.getElementById('lbl_' + f)
+    if (el) body[f] = el.value
+  })
+  const res = await fetch('/api/admin/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  })
+  const d = await res.json()
+  if (d.ok) { toast('Labels saved'); loadCurrentConfig() }
+  else toast('Failed to save labels', true)
+}
+
+// ── Load current config ──
+async function loadCurrentConfig() {
+  const res = await fetch('/api/config')
+  const cfg = await res.json()
+  currentConfig = cfg
+
+  // Highlight the matching CRM card
+  if (cfg.brand) {
+    document.querySelectorAll('.crm-card').forEach(c => c.classList.remove('selected'))
+    document.querySelector(`.crm-card[data-key="${cfg.brand}"]`)?.classList.add('selected')
+    selectedCrm = cfg.brand
+
+    const crm = CRMS.find(c => c.key === cfg.brand)
+    if (crm) {
+      const strip = document.getElementById('configStrip')
+      strip.style.display = 'flex'
+      document.getElementById('stripLogo').src = `/assets/logos/${cfg.brand}.svg`
+      document.getElementById('stripName').textContent = cfg.app_title || crm.name
+      document.getElementById('stripColors').textContent = `${cfg.primary_hex} · ${cfg.accent_hex}`
+    }
+  }
+
+  // Set colour inputs
+  if (cfg.primary_hex) setColorInputs(cfg.primary_hex, cfg.accent_hex || '#333', cfg.secondary_hex || '#fff')
+
+  // Fill label fields
+  ;['app_title','customer_label','primary_record_label','create_label','recent_records_label','customer_tier_label'].forEach(f => {
+    const el = document.getElementById('lbl_' + f)
+    if (el && cfg[f]) el.value = cfg[f]
+  })
+
+  // Update status pill
+  const crm = CRMS.find(c => c.key === cfg.brand)
+  document.getElementById('statusPill').textContent = crm
+    ? `Active: ${crm.name}`
+    : `Active: ${cfg.brand || '?'}`
+}
+
+// ── Seeds / Scenarios ──
+async function loadSeeds() {
+  const res = await fetch('/api/admin/seeds')
+  const d = await res.json()
+  activeScenario = d.activeScenario || ''
+
+  // Populate active scenario picker
+  const picker = document.getElementById('activeScenarioPicker')
+  picker.innerHTML = (d.seeds || []).map(s =>
+    `<option value="${s.scenario_key}"${s.scenario_key === activeScenario ? ' selected' : ''}>${s.scenario_key}</option>`
+  ).join('')
+
+  // Build table
+  const tbody = document.getElementById('seedsBody')
+  if (!d.seeds || !d.seeds.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="color:var(--muted);padding:16px 12px">No scenarios found.</td></tr>'
+    return
+  }
+  tbody.innerHTML = d.seeds.map(s => `
+    <tr>
+      <td>
+        <span class="scenario-key">${s.scenario_key}</span>
+        ${s.scenario_key === activeScenario ? '<br><span class="active-badge"><span class="active-dot"></span>Active</span>' : ''}
+      </td>
+      <td style="font-family:monospace;font-size:12px">${s.phone || '—'}</td>
+      <td>${s.customer_name || '—'}</td>
+      <td>${s.customer_status || '—'}</td>
+      <td>${s.primary_subject ? `<span title="${s.primary_subject}">${s.primary_subject.slice(0,30)}${s.primary_subject.length > 30 ? '…' : ''}</span>` : '—'}</td>
+      <td><code style="font-size:11px;background:#F3F4F6;padding:2px 6px;border-radius:4px">${s.backend}</code></td>
+      <td>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-secondary btn-sm" onclick="activateScenario('${s.scenario_key}')">Use</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteScenario('${s.scenario_key}')">Delete</button>
+        </div>
+      </td>
+    </tr>
+  `).join('')
+}
+
+async function setActiveScenario() {
+  const key = document.getElementById('activeScenarioPicker').value
+  if (!key) return
+  await activateScenario(key)
+}
+
+async function activateScenario(key) {
+  const res = await fetch('/api/admin/seed', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ scenarioKey: key })
+  })
+  const d = await res.json()
+  if (d.ok) { toast(`Active: ${key}`); loadSeeds(); loadCurrentConfig() }
+  else toast('Failed to activate', true)
+}
+
+async function deleteScenario(key) {
+  if (!confirm(`Delete scenario "${key}"?`)) return
+  const res = await fetch('/api/admin/seeds/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ scenario_key: key })
+  })
+  const d = await res.json()
+  if (d.ok) { toast(`Deleted: ${key}`); loadSeeds() }
+  else toast('Delete failed', true)
+}
+
+function toggleAddForm() {
+  document.getElementById('addForm').classList.toggle('open')
+}
+
+async function addScenario() {
+  const body = {
+    scenario_key:     document.getElementById('new_scenario_key').value.trim(),
+    backend:          document.getElementById('new_backend').value,
+    phone:            document.getElementById('new_phone').value.trim(),
+    email:            document.getElementById('new_email').value.trim(),
+    customer_name:    document.getElementById('new_customer_name').value.trim(),
+    customer_status:  document.getElementById('new_customer_status').value.trim(),
+    primary_subject:  document.getElementById('new_primary_subject').value.trim(),
+    primary_status:   document.getElementById('new_primary_status').value,
+    primary_due_date: document.getElementById('new_primary_due_date').value.trim(),
+    recent_count:     parseInt(document.getElementById('new_recent_count').value) || 0
+  }
+  if (!body.scenario_key) { toast('Scenario key is required', true); return }
+
+  const res = await fetch('/api/admin/seeds/add', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  })
+  const d = await res.json()
+  if (d.ok) {
+    toast(`Added: ${body.scenario_key}`)
+    toggleAddForm()
+    // Clear form
+    document.querySelectorAll('#addForm input[type="text"]').forEach(i => i.value = '')
+    loadSeeds()
+  } else toast('Failed to add scenario', true)
+}
+
+// ── Reset ──
+async function doReset() {
+  if (!confirm('Reset all config to defaults?')) return
+  const res = await fetch('/api/admin/reset-all', { method: 'POST' })
+  const d = await res.json()
+  if (d.ok) { toast('Reset to defaults'); loadCurrentConfig() }
+  else toast('Reset failed', true)
+}
+
+// ── Init ──
+buildCrmGrid()
+buildFlavorPills()
+loadCurrentConfig()
+</script>
+</body>
 </html>
