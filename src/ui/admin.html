@@ -370,6 +370,96 @@
 
   /* ── Loading ── */
   .inline-loading { color: var(--muted); font-size: 13px; padding: 20px 0; }
+
+  /* ── Combination picker ── */
+  .combo-picker {
+    display: none;
+    margin-top: 20px;
+    border: 2px dashed var(--brand);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    background: var(--brand-light);
+  }
+  .combo-picker.open { display: block; }
+  .combo-picker-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--brand);
+    margin-bottom: 4px;
+  }
+  .combo-picker-sub {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .combo-crm-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .combo-crm-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: white;
+    cursor: pointer;
+    transition: border-color .12s, box-shadow .12s;
+    user-select: none;
+  }
+  .combo-crm-item:hover { border-color: #C4B5FD; }
+  .combo-crm-item.selected {
+    border-color: var(--crm-item-color, var(--brand));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--crm-item-color, var(--brand)) 18%, transparent);
+    background: color-mix(in srgb, var(--crm-item-color, var(--brand)) 6%, white);
+  }
+  .combo-crm-item input[type="checkbox"] { display: none; }
+  .combo-check-box {
+    width: 16px; height: 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 4px;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .12s;
+  }
+  .combo-crm-item.selected .combo-check-box {
+    background: var(--crm-item-color, var(--brand));
+    border-color: var(--crm-item-color, var(--brand));
+  }
+  .combo-check-box svg { display: none; }
+  .combo-crm-item.selected .combo-check-box svg { display: block; }
+  .combo-crm-logo { width: 22px; height: 22px; object-fit: contain; flex-shrink: 0; }
+  .combo-crm-label { font-size: 12px; font-weight: 600; color: var(--text); flex: 1; }
+  .combo-primary-badge {
+    font-size: 10px;
+    font-weight: 700;
+    color: white;
+    background: var(--crm-item-color, var(--brand));
+    padding: 1px 6px;
+    border-radius: 10px;
+    white-space: nowrap;
+  }
+  .combo-strip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+    min-height: 28px;
+  }
+  .combo-strip-logo {
+    width: 22px; height: 22px;
+    border-radius: 4px;
+    object-fit: contain;
+    border: 1.5px solid var(--border);
+    background: white;
+    padding: 2px;
+  }
+  .combo-plus { font-size: 13px; color: var(--muted); font-weight: 700; }
+  .combo-actions { display: flex; gap: 8px; align-items: center; }
 </style>
 </head>
 <body>
@@ -421,6 +511,23 @@
           <img id="stripLogo" src="" alt="">
           <div>Currently showing <strong id="stripName"></strong> branding •
             <span id="stripColors" style="color:var(--muted)"></span>
+          </div>
+        </div>
+
+        <!-- Combination CRM picker (shown only when Multi-CRM card is selected) -->
+        <div class="combo-picker" id="comboPicker">
+          <div class="combo-picker-title">🔗 Configure Multi-CRM Combination</div>
+          <div class="combo-picker-sub">Select two or more CRMs. The first one selected is <strong>primary</strong> — it drives the contact card styling and labels.</div>
+          <div class="combo-crm-grid" id="comboCrmGrid">
+            <!-- Populated by JS -->
+          </div>
+          <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px">Selected order</div>
+          <div class="combo-strip" id="comboStrip">
+            <span style="font-size:12px;color:var(--muted)">No CRMs selected yet</span>
+          </div>
+          <div class="combo-actions">
+            <button class="btn btn-primary" onclick="saveCombination()">Save Combination</button>
+            <button class="btn btn-secondary" onclick="cancelCombination()">Cancel</button>
           </div>
         </div>
       </div>
@@ -664,6 +771,14 @@ const CRMS = [
     primary: '#4F46E5',
     accent: '#3730A3',
     bg: '#EEF2FF'
+  },
+  {
+    key: 'combination',
+    name: 'Multi-CRM',
+    primary: '#4F46E5',
+    accent: '#3730A3',
+    bg: '#EEF2FF',
+    isCombo: true
   }
 ]
 
@@ -679,6 +794,7 @@ const FLAVORS = {
 let currentConfig = {}
 let selectedCrm = null
 let activeScenario = ''
+let selectedComboCrms = [] // ordered list of CRM keys for combination mode
 
 // ── Utilities ──
 function toast(msg, err = false) {
