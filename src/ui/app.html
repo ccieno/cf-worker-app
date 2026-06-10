@@ -580,10 +580,13 @@ async function renderApp() {
         const brand = CRM_BRANDS[key] || CRM_BRANDS.custom_crm
         const logoUrl = `/assets/logos/${key}.svg`
 
+        // Use this CRM's own lookup result if available, else fall back to primary
+        const crmData = (data.crmResults && data.crmResults[key]) || data
+
         // Primary record section for this CRM
         let recordContent = ''
-        if (data.primaryRecord) {
-          const r = data.primaryRecord
+        if (crmData.primaryRecord) {
+          const r = crmData.primaryRecord
           const link = r.caseUrl
             ? `<a class="record-number" href="${r.caseUrl}" target="_blank" style="color:${brand.primary}">#${r.displayNumber}</a>`
             : `<span class="record-number" style="color:${brand.primary}">#${r.displayNumber}</span>`
@@ -603,9 +606,9 @@ async function renderApp() {
 
         // Recent records section for this CRM
         let recentContent = ''
-        if (data.recentRecords && data.recentRecords.length) {
+        if (crmData.recentRecords && crmData.recentRecords.length) {
           recentContent = `<div class="section-label" style="margin-top:8px">${brand.recentLabel}</div>`
-          data.recentRecords.forEach(r => {
+          crmData.recentRecords.forEach(r => {
             const link = r.caseUrl
               ? `<a class="record-number" href="${r.caseUrl}" target="_blank" style="color:${brand.primary}">#${r.displayNumber}</a>`
               : `<span class="record-number" style="color:${brand.primary}">#${r.displayNumber}</span>`

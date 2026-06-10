@@ -712,6 +712,104 @@ async function handleResetAll(request, env) {
 // CRM Lookup Functions
 // ─────────────────────────────────────────
 
+// Route a lookup to the correct backend by brand key
+function lookupForBrand(brandKey, { phone, email, env }) {
+  if (brandKey === 'salesforce') return lookupSalesforce({ phone, email, env })
+  if (brandKey === 'hubspot')    return lookupHubspot({ phone, email, env })
+  return lookupMockCrm({ phone, email, env })
+}
+
+// ─────────────────────────────────────────
+// HubSpot Lookup (real API, private app token)
+// ─────────────────────────────────────────
+
+async function lookupHubspot({ phone, email, env }) {
+  const token = env.HUBSPOT_TOKEN
+  if (!token) throw new Error('HUBSPOT_TOKEN secret not configured')
+
+  const headers = {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  }
+
+  // Search contacts by phone or mobilephone
+  const searchPayload = {
+    filterGroups: [
+      { filters: [{ propertyName: 'phone',       operator: 'EQ', value: phone }] },
+      { filters: [{ propertyName: 'mobilephone', operator: 'EQ', value: phone }] }
+    ],
+    properties: ['firstname', 'lastname', 'email', 'phone', 'mobilephone', 'company', 'lifecyclestage'],
+    limit: 1
+  }
+
+  const searchRes  = await fetch('https://api.hubapi.com/crm/v3/objects/contacts/search', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(searchPayload)
+  })
+  const searchData = await searchRes.json().catch(() => ({}))
+
+  if (!searchData.total || searchData.total === 0) {
+    return { customer: null, primaryRecord: null, recentRecords: [] }
+  }
+
+  const contact   = searchData.results[0]
+  const contactId = contact.id
+  const props     = contact.properties || {}
+  const fullName  = `${props.firstname || ''} ${props.lastname || ''}`.trim() || 'Unknown Caller'
+
+  const customer = {
+    id:           contactId,
+    name:         fullName,
+    email:        props.email       || '',
+    phone:        props.phone       || props.mobilephone || phone,
+    address:      props.company     || '',
+    tierOrStatus: props.lifecyclestage || ''
+  }
+
+  // Get associated ticket IDs
+  const assocRes  = await fetch(
+    `https://api.hubapi.com/crm/v3/objects/contacts/${contactId}/associations/tickets`,
+    { headers }
+  )
+  const assocData  = await assocRes.json().catch(() => ({ results: [] }))
+  const ticketIds  = (assocData.results || []).map(r => r.id).slice(0, 5)
+
+  // Fetch ticket details in parallel
+  const ticketDetails = await Promise.all(
+    ticketIds.map(tid =>
+      fetch(
+        `https://api.hubapi.com/crm/v3/objects/tickets/${tid}?properties=subject,hs_pipeline_stage,hs_ticket_priority,content,createdate`,
+        { headers }
+      )
+        .then(r => r.json())
+        .catch(() => null)
+    )
+  )
+
+  const tickets = ticketDetails
+    .filter(Boolean)
+    .map(t => {
+      const tp = t.properties || {}
+      return {
+        id:            String(t.id),
+        displayNumber: String(t.id),
+        subject:       tp.subject || 'No subject',
+        status:        tp.hs_pipeline_stage === '4' ? 'Closed' : 'Open',
+        dueDate:       tp.createdate ? tp.createdate.split('T')[0] : '',
+        description:   tp.content || '',
+        lastUpdated:   '',
+        caseUrl:       `https://app.hubspot.com/contacts/tickets/${t.id}`
+      }
+    })
+
+  const openTickets   = tickets.filter(t => t.status !== 'Closed')
+  const primaryRecord = openTickets.length ? openTickets[0] : (tickets.length ? tickets[0] : null)
+  const recentRecords = tickets.filter(t => t !== primaryRecord).slice(0, 3)
+
+  return { customer, primaryRecord, recentRecords }
+}
+
 async function lookupMockCrm({ phone, email, env }) {
   const token = env.MOCK_API_TOKEN
   const base  = env.MOCK_API_BASE_URL
