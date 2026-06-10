@@ -17,6 +17,7 @@ CREATE TABLE config (
   secondary_hex TEXT NOT NULL,
   accent_hex TEXT NOT NULL,
   debug INTEGER NOT NULL DEFAULT 0,
+  combination_crms TEXT NOT NULL DEFAULT '',
   updated_at TEXT NOT NULL
 );
 

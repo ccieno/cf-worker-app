@@ -96,6 +96,15 @@ const LOGOS = {
   // Halo ITSM — teal brand, white ring + speech bubble mark
   halo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60"><image href="data:image/webp;base64,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" width="60" height="60" preserveAspectRatio="xMidYMid meet"/></svg>`,
 
+  // Multi-CRM combination — four brand-coloured squares in a grid
+  combination: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60">
+  <rect width="60" height="60" rx="12" fill="#F3F4F6"/>
+  <rect x="7" y="7" width="21" height="21" rx="5" fill="#0176D3"/>
+  <rect x="32" y="7" width="21" height="21" rx="5" fill="#FF7A59"/>
+  <rect x="7" y="32" width="21" height="21" rx="5" fill="#0C2B38"/>
+  <rect x="32" y="32" width="21" height="21" rx="5" fill="#2DCAB8"/>
+</svg>`,
+
   custom_crm: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60">
   <rect width="60" height="60" rx="12" fill="#4F46E5"/>
   <circle cx="30" cy="18" r="7" fill="white"/>
@@ -241,6 +250,20 @@ function getBrandPreset(key) {
       primary_hex: '#4F46E5',
       secondary_hex: '#EEF2FF',
       accent_hex: '#3730A3'
+    },
+    combination: {
+      brand: 'combination',
+      backend: 'custom_crm',
+      app_title: 'Multi-CRM Integration',
+      customer_label: 'Customer',
+      primary_record_label: 'Case',
+      create_label: 'New Case',
+      recent_records_label: 'Case History',
+      customer_tier_label: 'Customer Tier',
+      logo_url: '/assets/logos/combination.svg',
+      primary_hex: '#4F46E5',
+      secondary_hex: '#F0F0FF',
+      accent_hex: '#3730A3'
     }
   }
   return presets[key] || presets.custom_crm
@@ -275,7 +298,8 @@ async function handleAdminConfigUpdate(request, env) {
     const allowed = [
       'brand', 'backend', 'app_title', 'customer_label', 'primary_record_label',
       'create_label', 'recent_records_label', 'customer_tier_label',
-      'logo_url', 'primary_hex', 'secondary_hex', 'accent_hex', 'debug'
+      'logo_url', 'primary_hex', 'secondary_hex', 'accent_hex', 'debug',
+      'combination_crms'
     ]
     for (const field of allowed) {
       if (body[field] !== undefined) updates[field] = body[field]
