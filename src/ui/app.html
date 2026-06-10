@@ -1045,20 +1045,15 @@ function buildAppHtml(data) {
   return html
 }
 
-// Open external CRM/ticket links.
-// Strategy: window.open() returns null if the webview blocks popups (ZCC iframe).
-// In that case fall back to zoomSdk.openUrl() which hands off to the host app.
+// Record/ticket links — let native anchor target="_blank" behaviour run so Electron/Zoom
+// can intercept and open in the system browser. No preventDefault here.
+// Also fire zoomSdk.openUrl() for ZCC contexts that need the explicit SDK call.
 document.addEventListener('click', e => {
   const link = e.target.closest('a.record-number')
   if (!link) return
   const url = link.getAttribute('href')
   if (!url) return
-  e.preventDefault()
-
-  // Synchronous attempt — works in plain browsers; returns null in sandboxed iframes
-  const win = window.open(url, '_blank', 'noopener,noreferrer')
-  if (!win && typeof zoomSdk !== 'undefined' && typeof zoomSdk.openUrl === 'function') {
-    // window.open was blocked (ZCC webview) — use the Zoom SDK instead
+  if (typeof zoomSdk !== 'undefined' && typeof zoomSdk.openUrl === 'function') {
     zoomSdk.openUrl({ url }).catch(() => {})
   }
 })
