@@ -817,17 +817,49 @@ function switchTab(id, btn) {
 // ── Build CRM grid ──
 function buildCrmGrid() {
   const grid = document.getElementById('crmGrid')
-  grid.innerHTML = CRMS.map(crm => `
-    <div class="crm-card" data-key="${crm.key}" style="--crm-color:${crm.primary}" onclick="selectCrm('${crm.key}')">
-      <div class="crm-card-check"><svg viewBox="0 0 10 8"><path d="M1 4l3 3 5-6" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-      <div class="crm-logo-wrap">
-        <img src="/assets/logos/${crm.key}.svg" alt="${crm.name}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-        <div style="display:none;width:40px;height:40px;background:${crm.primary};border-radius:8px;color:white;font-weight:700;font-size:14px;align-items:center;justify-content:center">${crm.name.slice(0,2).toUpperCase()}</div>
+  grid.innerHTML = CRMS.map(crm => {
+    if (crm.isCombo) {
+      // Special multi-logo tile for the combination card
+      const previewCrms = CRMS.filter(c => !c.isCombo).slice(0, 4)
+      const miniLogos = previewCrms.map(c =>
+        `<img src="/assets/logos/${c.key}.svg" alt="${c.name}" style="width:16px;height:16px;object-fit:contain;border-radius:3px;border:1px solid #E5E7EB;background:white;padding:1px">`
+      ).join('')
+      return `
+        <div class="crm-card" data-key="${crm.key}" style="--crm-color:${crm.primary}" onclick="selectCrm('${crm.key}')">
+          <div class="crm-card-check"><svg viewBox="0 0 10 8"><path d="M1 4l3 3 5-6" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div class="crm-logo-wrap" style="flex-direction:column;gap:4px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px">${miniLogos}</div>
+          </div>
+          <div class="crm-card-name">${crm.name}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:-4px">Combine any CRMs</div>
+          <div class="color-swatch" style="background:linear-gradient(90deg,#0176D3 25%,#FF7A59 25% 50%,#0C2B38 50% 75%,#2DCAB8 75%)"></div>
+        </div>`
+    }
+    return `
+      <div class="crm-card" data-key="${crm.key}" style="--crm-color:${crm.primary}" onclick="selectCrm('${crm.key}')">
+        <div class="crm-card-check"><svg viewBox="0 0 10 8"><path d="M1 4l3 3 5-6" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="crm-logo-wrap">
+          <img src="/assets/logos/${crm.key}.svg" alt="${crm.name}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+          <div style="display:none;width:40px;height:40px;background:${crm.primary};border-radius:8px;color:white;font-weight:700;font-size:14px;align-items:center;justify-content:center">${crm.name.slice(0,2).toUpperCase()}</div>
+        </div>
+        <div class="crm-card-name">${crm.name}</div>
+        <div class="color-swatch" style="background:${crm.primary}"></div>
+      </div>`
+  }).join('')
+
+  // Build the combo CRM checkboxes (all non-combo CRMs)
+  const comboGrid = document.getElementById('comboCrmGrid')
+  if (comboGrid) {
+    comboGrid.innerHTML = CRMS.filter(c => !c.isCombo).map(crm => `
+      <div class="combo-crm-item" id="combo-item-${crm.key}" style="--crm-item-color:${crm.primary}" onclick="toggleComboCrm('${crm.key}')">
+        <div class="combo-check-box">
+          <svg viewBox="0 0 10 8" width="8" height="8"><path d="M1 4l3 3 5-6" stroke="white" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <img class="combo-crm-logo" src="/assets/logos/${crm.key}.svg" alt="${crm.name}" onerror="this.style.display='none'">
+        <span class="combo-crm-label">${crm.name}</span>
       </div>
-      <div class="crm-card-name">${crm.name}</div>
-      <div class="color-swatch" style="background:${crm.primary}"></div>
-    </div>
-  `).join('')
+    `).join('')
+  }
 }
 
 // ── Build flavor pills ──
