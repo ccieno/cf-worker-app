@@ -854,10 +854,26 @@ function mapMockCase(row) {
   }
 }
 
+function buildSalesforcePhoneVariants(e164) {
+  const v = new Set([e164])
+  // Strip leading +
+  const noPlus = e164.replace(/^\+/, '')
+  v.add(noPlus)
+  // UK: convert +44XXXXXXXXXX ↔ 0XXXXXXXXXX and spaced variants
+  if (e164.startsWith('+44') && e164.length >= 12) {
+    const local    = '0' + e164.slice(3)           // 07700900001
+    const spaced   = '+44 ' + e164.slice(3, 7) + ' ' + e164.slice(7)  // +44 7700 900001
+    const spacedLo = '0'   + e164.slice(3, 7) + ' ' + e164.slice(7)   // 07700 900001
+    v.add(local); v.add(spaced); v.add(spacedLo)
+  }
+  return [...v].map(p => `'${escapeSoql(p)}'`).join(',')
+}
+
 async function lookupSalesforce({ phone, email, env }) {
   const accessToken = await getSalesforceAccessToken(env)
+  const phoneVariants = buildSalesforcePhoneVariants(phone)
 
-  const contactSoql = `SELECT Id,Name,Email,Phone,MailingAddress,Status__c,LastModifiedDate FROM Contact WHERE Phone='${escapeSoql(phone)}' ORDER BY LastModifiedDate DESC LIMIT 1`
+  const contactSoql = `SELECT Id,Name,Email,Phone,MailingAddress,Status__c,LastModifiedDate FROM Contact WHERE Phone IN (${phoneVariants}) OR MobilePhone IN (${phoneVariants}) ORDER BY LastModifiedDate DESC LIMIT 1`
   const contactResult = await salesforceQuery(contactSoql, accessToken, env)
   const contactRow = Array.isArray(contactResult.records) && contactResult.records.length
     ? contactResult.records[0] : null
