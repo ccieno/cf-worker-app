@@ -35,6 +35,7 @@ export default {
     if (path === '/api/admin/seeds')        return handleAdminSeedsList(request, env)
     if (path === '/api/admin/seeds/add')    return handleAdminSeedAdd(request, env)
     if (path === '/api/admin/seeds/delete') return handleAdminSeedDelete(request, env)
+    if (path === '/api/lookup/select')      return handleLookupSelect(request, env)
 
     // ── Debug (remove before go-live) ──
     if (path === '/api/debug/sf')           return handleDebugSalesforce(request, env)
