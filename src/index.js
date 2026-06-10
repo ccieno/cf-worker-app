@@ -36,6 +36,9 @@ export default {
     if (path === '/api/admin/seeds/add')    return handleAdminSeedAdd(request, env)
     if (path === '/api/admin/seeds/delete') return handleAdminSeedDelete(request, env)
 
+    // ── Debug (remove before go-live) ──
+    if (path === '/api/debug/sf')           return handleDebugSalesforce(request, env)
+
     return new Response('Not found', { status: 404 })
   }
 }
