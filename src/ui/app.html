@@ -607,7 +607,7 @@ async function renderApp() {
         <button onclick="updatePrimaryStatus()">Save</button>
       </div>
     </div>`
-  } else {
+  } else if (cfg.brand !== 'combination') {
     html += `<div class="card">
       <div class="section-label">${cfg.primary_record_label || 'Record'}</div>
       <div class="empty-state">No open ${(cfg.primary_record_label || 'record').toLowerCase()} found.</div>
@@ -618,7 +618,7 @@ async function renderApp() {
   }
 
   // ── Recent records card ──
-  if (data.recentRecords && data.recentRecords.length) {
+  if (cfg.brand !== 'combination' && data.recentRecords && data.recentRecords.length) {
     html += `<div class="card">
       <div class="section-label">${cfg.recent_records_label || 'Recent Records'}</div>`
     data.recentRecords.forEach(r => {
