@@ -476,6 +476,33 @@ async function handleLookup(request, env) {
 }
 
 // ─────────────────────────────────────────
+// API Handler — Contact Select (multi-match picker)
+// ─────────────────────────────────────────
+
+async function handleLookupSelect(request, env) {
+  try {
+    if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 })
+    const body      = await request.json().catch(() => ({}))
+    const contactId = body.contactId
+    const backend   = body.backend || 'salesforce'
+    if (!contactId) return Response.json({ error: 'contactId is required' }, { status: 400 })
+
+    const config = await env.DB.prepare(`SELECT * FROM config WHERE id=1 LIMIT 1`).first()
+
+    let result
+    if (backend === 'salesforce') {
+      result = await lookupSalesforceByContactId({ contactId, env })
+    } else {
+      return Response.json({ error: `Select not supported for backend: ${backend}` }, { status: 400 })
+    }
+
+    return Response.json({ ok: true, config, ...result })
+  } catch (err) {
+    return Response.json({ error: String(err?.message || err) }, { status: 500 })
+  }
+}
+
+// ─────────────────────────────────────────
 // API Handlers — Customer & Record Updates
 // ─────────────────────────────────────────
 
@@ -893,30 +920,49 @@ async function lookupSalesforce({ phone, email, env }) {
   const accessToken = await getSalesforceAccessToken(env)
   const p = escapeSoql(phone)
 
-  const contactSoql = `SELECT Id,Name,Email,Phone,MobilePhone,MailingAddress,Status__c,LastModifiedDate FROM Contact WHERE Phone='${p}' OR MobilePhone='${p}' ORDER BY LastModifiedDate DESC LIMIT 1`
+  // Fetch up to 5 matches so we can offer a picker if there are duplicates
+  const contactSoql = `SELECT Id,Name,Email,Phone,MobilePhone,MailingAddress,Status__c,LastModifiedDate FROM Contact WHERE Phone='${p}' OR MobilePhone='${p}' ORDER BY LastModifiedDate DESC LIMIT 5`
   const contactResult = await salesforceQuery(contactSoql, accessToken, env)
-  const contactRow = Array.isArray(contactResult.records) && contactResult.records.length
-    ? contactResult.records[0] : null
+  const contactRows = Array.isArray(contactResult.records) ? contactResult.records : []
 
+  if (contactRows.length === 0) return { customer: null, primaryRecord: null, recentRecords: [] }
+
+  // Multiple matches — return list for the UI to present a picker
+  if (contactRows.length > 1) {
+    return {
+      customer: null,
+      primaryRecord: null,
+      recentRecords: [],
+      customerMatches: contactRows.map(mapSalesforceContact)
+    }
+  }
+
+  // Single match — load records immediately as before
+  return await lookupSalesforceByContactId({ contactId: contactRows[0].Id, accessToken, env })
+}
+
+async function lookupSalesforceByContactId({ contactId, accessToken, env }) {
+  // Allow callers without an existing token to obtain one
+  const token = accessToken || await getSalesforceAccessToken(env)
+  const id    = escapeSoql(contactId)
+
+  const contactSoql = `SELECT Id,Name,Email,Phone,MobilePhone,MailingAddress,Status__c,LastModifiedDate FROM Contact WHERE Id='${id}' LIMIT 1`
+  const contactResult = await salesforceQuery(contactSoql, token, env)
+  const contactRow    = contactResult.records?.[0] || null
   if (!contactRow) return { customer: null, primaryRecord: null, recentRecords: [] }
 
-  const contactId = contactRow.Id
-
-  const primarySoql = `SELECT Id,CaseNumber,Subject,Status,Description,Date__c,LastModifiedDate FROM Case WHERE ContactId='${escapeSoql(contactId)}' AND Status IN ('New','Open','Pending') ORDER BY LastModifiedDate DESC LIMIT 1`
-  const recentSoql  = `SELECT Id,CaseNumber,Subject,Status,Description,Date__c,LastModifiedDate FROM Case WHERE ContactId='${escapeSoql(contactId)}' ORDER BY LastModifiedDate DESC LIMIT 3`
+  const primarySoql = `SELECT Id,CaseNumber,Subject,Status,Description,Date__c,LastModifiedDate FROM Case WHERE ContactId='${id}' AND Status IN ('New','Open','Pending') ORDER BY LastModifiedDate DESC LIMIT 1`
+  const recentSoql  = `SELECT Id,CaseNumber,Subject,Status,Description,Date__c,LastModifiedDate FROM Case WHERE ContactId='${id}' ORDER BY LastModifiedDate DESC LIMIT 3`
 
   const [primaryResult, recentResult] = await Promise.all([
-    salesforceQuery(primarySoql, accessToken, env),
-    salesforceQuery(recentSoql,  accessToken, env)
+    salesforceQuery(primarySoql, token, env),
+    salesforceQuery(recentSoql,  token, env)
   ])
-
-  const primaryRow  = Array.isArray(primaryResult.records) && primaryResult.records.length ? primaryResult.records[0] : null
-  const recentRows  = Array.isArray(recentResult.records) ? recentResult.records : []
 
   return {
     customer:      mapSalesforceContact(contactRow),
-    primaryRecord: primaryRow ? mapSalesforceCase(primaryRow, env) : null,
-    recentRecords: recentRows.slice(0, 3).map(r => mapSalesforceCase(r, env))
+    primaryRecord: primaryResult.records?.[0] ? mapSalesforceCase(primaryResult.records[0], env) : null,
+    recentRecords: (recentResult.records || []).slice(0, 3).map(r => mapSalesforceCase(r, env))
   }
 }
 
