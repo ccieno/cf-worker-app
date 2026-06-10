@@ -319,6 +319,36 @@
   }
   textarea { resize: vertical; }
 
+  /* ── Contact picker (multiple matches) ── */
+  .contact-match {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color .12s, background .12s;
+    background: white;
+    margin-bottom: 6px;
+  }
+  .contact-match:last-child { margin-bottom: 0; }
+  .contact-match:hover { border-color: var(--brand); background: var(--brand-bg); }
+  .contact-match-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--brand);
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .contact-match-info { flex: 1; min-width: 0; }
+  .contact-match-name { font-size: 13px; font-weight: 600; color: var(--text); }
+  .contact-match-meta { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .contact-match-arrow { color: var(--muted); font-size: 14px; flex-shrink: 0; }
+
   /* ── Combination CRM cards ── */
   .crm-panel {
     background: var(--card-bg);
@@ -481,8 +511,30 @@ async function renderApp() {
     <span class="crm-title">${cfg.app_title}</span>
   </div>`
 
+  // ── Contact picker (multiple matches) ──
+  if (data.customerMatches && data.customerMatches.length > 1) {
+    html += `<div class="card">
+      <div class="section-label">${cfg.customer_label || 'Customer'}</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
+        ${data.customerMatches.length} contacts found for this number — select one:
+      </div>`
+    data.customerMatches.forEach(c => {
+      const initials = c.name.split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase() || '?'
+      const meta     = [c.email, c.phone, c.tierOrStatus].filter(Boolean).join(' · ')
+      html += `<div class="contact-match" onclick="selectContact('${c.id}', '${cfg.brand === 'combination' ? 'salesforce' : (cfg.backend || 'salesforce')}')">
+        <div class="contact-match-avatar">${initials}</div>
+        <div class="contact-match-info">
+          <div class="contact-match-name">${c.name}</div>
+          <div class="contact-match-meta">${meta}</div>
+        </div>
+        <div class="contact-match-arrow">›</div>
+      </div>`
+    })
+    html += `</div>`
+  }
+
   // ── Customer card ──
-  if (data.customer) {
+  if (data.customer && !data.customerMatches) {
     const c = data.customer
     html += `<div class="card">
       <div class="section-label">${cfg.customer_label || 'Customer'}</div>
@@ -508,7 +560,7 @@ async function renderApp() {
         <button onclick="openCustomerEdit()">Edit ${cfg.customer_label || 'Customer'}</button>
       </div>
     </div>`
-  } else {
+  } else if (!data.customerMatches) {
     html += `<div class="card">
       <div class="section-label">${cfg.customer_label || 'Customer'}</div>
       <div class="empty-state">No matching customer found for this caller.</div>
