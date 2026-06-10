@@ -879,6 +879,24 @@ function selectCrm(key) {
   const crm = CRMS.find(c => c.key === key)
   if (!crm) return
 
+  if (crm.isCombo) {
+    // Show the combination picker instead of immediately saving
+    document.getElementById('comboPicker').classList.add('open')
+    // Pre-select any existing combination from config
+    if (currentConfig.combination_crms) {
+      selectedComboCrms = currentConfig.combination_crms.split(',').filter(Boolean)
+    } else {
+      selectedComboCrms = []
+    }
+    renderComboCrms()
+    // Hide the config strip while picking
+    document.getElementById('configStrip').style.display = 'none'
+    return
+  }
+
+  // Hide combo picker if switching away
+  document.getElementById('comboPicker').classList.remove('open')
+
   // Update colour inputs
   setColorInputs(crm.primary, crm.accent, crm.bg)
 
@@ -891,6 +909,91 @@ function selectCrm(key) {
 
   // Apply preset to config
   applyPreset(key, crm)
+}
+
+// ── Combination CRM helpers ──
+function toggleComboCrm(key) {
+  const idx = selectedComboCrms.indexOf(key)
+  if (idx === -1) {
+    selectedComboCrms.push(key)
+  } else {
+    selectedComboCrms.splice(idx, 1)
+  }
+  renderComboCrms()
+}
+
+function renderComboCrms() {
+  // Update checkbox items
+  CRMS.filter(c => !c.isCombo).forEach(crm => {
+    const item = document.getElementById(`combo-item-${crm.key}`)
+    if (!item) return
+    const isSelected = selectedComboCrms.includes(crm.key)
+    item.classList.toggle('selected', isSelected)
+    // Add/remove primary badge
+    const existingBadge = item.querySelector('.combo-primary-badge')
+    if (existingBadge) existingBadge.remove()
+    if (isSelected && selectedComboCrms[0] === crm.key) {
+      const badge = document.createElement('span')
+      badge.className = 'combo-primary-badge'
+      badge.textContent = 'Primary'
+      item.appendChild(badge)
+    }
+  })
+
+  // Update strip preview
+  const strip = document.getElementById('comboStrip')
+  if (selectedComboCrms.length === 0) {
+    strip.innerHTML = '<span style="font-size:12px;color:var(--muted)">No CRMs selected yet</span>'
+    return
+  }
+  strip.innerHTML = selectedComboCrms.map((key, i) => {
+    const crm = CRMS.find(c => c.key === key)
+    if (!crm) return ''
+    return (i > 0 ? '<span class="combo-plus">+</span>' : '') +
+      `<img class="combo-strip-logo" src="/assets/logos/${key}.svg" alt="${crm.name}" title="${crm.name}${i === 0 ? ' (Primary)' : ''}" style="--crm-logo-border:${crm.primary}">`
+  }).join('') +
+  `<span style="font-size:12px;color:var(--muted);margin-left:6px">${selectedComboCrms.map(k => CRMS.find(c=>c.key===k)?.name).join(' + ')}</span>`
+}
+
+async function saveCombination() {
+  if (selectedComboCrms.length < 2) {
+    toast('Select at least 2 CRMs', true)
+    return
+  }
+  const primaryCrm = CRMS.find(c => c.key === selectedComboCrms[0])
+  const comboString = selectedComboCrms.join(',')
+
+  const res = await fetch('/api/admin/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      presetKey: 'combination',
+      combination_crms: comboString,
+      // Use primary CRM's colors so the contact card looks right
+      primary_hex: primaryCrm?.primary || '#4F46E5',
+      accent_hex:  primaryCrm?.accent  || '#3730A3',
+      secondary_hex: primaryCrm?.bg    || '#EEF2FF',
+      app_title: selectedComboCrms.map(k => CRMS.find(c=>c.key===k)?.name).join(' + ') + ' Integration'
+    })
+  })
+  const d = await res.json()
+  if (d.ok) {
+    toast(`Multi-CRM: ${selectedComboCrms.map(k => CRMS.find(c=>c.key===k)?.name).join(' + ')}`)
+    document.getElementById('comboPicker').classList.remove('open')
+    loadCurrentConfig()
+  } else {
+    toast('Failed to save combination', true)
+  }
+}
+
+function cancelCombination() {
+  document.getElementById('comboPicker').classList.remove('open')
+  // Revert card selection to current config
+  document.querySelectorAll('.crm-card').forEach(c => c.classList.remove('selected'))
+  if (currentConfig.brand) {
+    document.querySelector(`.crm-card[data-key="${currentConfig.brand}"]`)?.classList.add('selected')
+  }
+  selectedCrm = currentConfig.brand || null
 }
 
 async function applyPreset(key, crm) {
