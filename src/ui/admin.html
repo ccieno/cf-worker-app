@@ -900,12 +900,13 @@ function selectCrm(key) {
   // Update colour inputs
   setColorInputs(crm.primary, crm.accent, crm.bg)
 
-  // Update strip
+  // Update strip (rebuild HTML to ensure IDs exist, in case we came from combo mode)
   const strip = document.getElementById('configStrip')
   strip.style.display = 'flex'
-  document.getElementById('stripLogo').src = `/assets/logos/${key}.svg`
-  document.getElementById('stripName').textContent = crm.name
-  document.getElementById('stripColors').textContent = `${crm.primary} · ${crm.accent}`
+  strip.innerHTML = `<img id="stripLogo" src="/assets/logos/${key}.svg" alt="">
+    <div>Currently showing <strong id="stripName">${crm.name}</strong> branding •
+      <span id="stripColors" style="color:var(--muted)">${crm.primary} · ${crm.accent}</span>
+    </div>`
 
   // Apply preset to config
   applyPreset(key, crm)
@@ -1087,10 +1088,26 @@ async function loadCurrentConfig() {
     const crm = CRMS.find(c => c.key === cfg.brand)
     if (crm) {
       const strip = document.getElementById('configStrip')
-      strip.style.display = 'flex'
-      document.getElementById('stripLogo').src = `/assets/logos/${cfg.brand}.svg`
-      document.getElementById('stripName').textContent = cfg.app_title || crm.name
-      document.getElementById('stripColors').textContent = `${cfg.primary_hex} · ${cfg.accent_hex}`
+
+      if (cfg.brand === 'combination' && cfg.combination_crms) {
+        // Combination mode: show multi-logo strip
+        const comboKeys = cfg.combination_crms.split(',').filter(Boolean)
+        const logoImgs = comboKeys.map(k => {
+          const c = CRMS.find(x => x.key === k)
+          return `<img src="/assets/logos/${k}.svg" alt="${c?.name||k}" style="height:20px;object-fit:contain;border:1px solid var(--border);border-radius:4px;background:white;padding:2px">`
+        }).join('<span style="color:var(--muted);font-weight:700;font-size:13px">+</span>')
+        strip.style.display = 'flex'
+        strip.innerHTML = `<div style="display:flex;align-items:center;gap:6px">${logoImgs}</div>
+          <div>Multi-CRM mode: <strong>${comboKeys.map(k=>CRMS.find(c=>c.key===k)?.name||k).join(' + ')}</strong> •
+            <span style="color:var(--muted)">${cfg.primary_hex} · ${cfg.accent_hex}</span>
+          </div>`
+      } else {
+        strip.style.display = 'flex'
+        strip.innerHTML = `<img id="stripLogo" src="/assets/logos/${cfg.brand}.svg" alt="">
+          <div>Currently showing <strong id="stripName">${cfg.app_title || crm.name}</strong> branding •
+            <span id="stripColors" style="color:var(--muted)">${cfg.primary_hex} · ${cfg.accent_hex}</span>
+          </div>`
+      }
     }
   }
 
@@ -1104,10 +1121,15 @@ async function loadCurrentConfig() {
   })
 
   // Update status pill
-  const crm = CRMS.find(c => c.key === cfg.brand)
-  document.getElementById('statusPill').textContent = crm
-    ? `Active: ${crm.name}`
-    : `Active: ${cfg.brand || '?'}`
+  if (cfg.brand === 'combination' && cfg.combination_crms) {
+    const names = cfg.combination_crms.split(',').map(k => CRMS.find(c=>c.key===k)?.name || k)
+    document.getElementById('statusPill').textContent = `Active: ${names.join(' + ')}`
+  } else {
+    const crm = CRMS.find(c => c.key === cfg.brand)
+    document.getElementById('statusPill').textContent = crm
+      ? `Active: ${crm.name}`
+      : `Active: ${cfg.brand || '?'}`
+  }
 }
 
 // ── Seeds / Scenarios ──
