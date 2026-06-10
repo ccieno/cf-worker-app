@@ -319,6 +319,56 @@
   }
   textarea { resize: vertical; }
 
+  /* ── Combination CRM cards ── */
+  .crm-panel {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+  .crm-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .crm-panel-logo {
+    height: 20px;
+    width: 20px;
+    object-fit: contain;
+    flex-shrink: 0;
+  }
+  .crm-panel-name {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    flex: 1;
+  }
+  .crm-panel-body {
+    padding: 10px 14px;
+  }
+  .combo-section-divider {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 10px 0 6px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--muted);
+  }
+  .combo-section-divider::before,
+  .combo-section-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
   /* ── Loading ── */
   .loading {
     display: flex;
@@ -347,6 +397,17 @@
 let latestData = null
 let lastRenderedPhone = null
 let renderNonce = 0
+
+// Brand colours / labels for each CRM key — used when rendering combination mode cards
+const CRM_BRANDS = {
+  salesforce: { name: 'Salesforce',   primary: '#0176D3', accent: '#032D60', bg: '#F4F6F9', recordLabel: 'Case',     recentLabel: 'Case History',    createLabel: 'Raise Case'  },
+  servicenow: { name: 'ServiceNow',   primary: '#0C2B38', accent: '#73E156', bg: '#F0F9F0', recordLabel: 'Incident', recentLabel: 'Recent Incidents', createLabel: 'New Incident' },
+  hubspot:    { name: 'HubSpot',      primary: '#FF7A59', accent: '#33475B', bg: '#FFF4F1', recordLabel: 'Ticket',   recentLabel: 'Recent Tickets',  createLabel: 'New Ticket'  },
+  zendesk:    { name: 'Zendesk',      primary: '#17494D', accent: '#03363D', bg: '#F0F7F7', recordLabel: 'Ticket',   recentLabel: 'Ticket History',  createLabel: 'New Ticket'  },
+  dynamics:   { name: 'Dynamics 365', primary: '#0078D4', accent: '#002050', bg: '#F0F6FF', recordLabel: 'Case',     recentLabel: 'Case History',    createLabel: 'New Case'    },
+  halo:       { name: 'HaloITSM',     primary: '#2DCAB8', accent: '#1BA99A', bg: '#E6FAF8', recordLabel: 'Ticket',   recentLabel: 'Ticket History',  createLabel: 'New Ticket'  },
+  custom_crm: { name: 'Custom CRM',   primary: '#4F46E5', accent: '#3730A3', bg: '#EEF2FF', recordLabel: 'Record',   recentLabel: 'Recent Records',  createLabel: 'Create New'  },
+}
 
 function showToast(msg, ok = true) {
   const t = document.createElement('div')
