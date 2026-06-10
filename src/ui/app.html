@@ -570,6 +570,75 @@ async function renderApp() {
     html += '</div>'
   }
 
+  // ── Combination CRM panels ──
+  if (cfg.brand === 'combination' && cfg.combination_crms) {
+    const comboKeys = cfg.combination_crms.split(',').filter(Boolean)
+    if (comboKeys.length > 0) {
+      html += `<div class="combo-section-divider">CRM Panels</div>`
+
+      comboKeys.forEach(key => {
+        const brand = CRM_BRANDS[key] || CRM_BRANDS.custom_crm
+        const logoUrl = `/assets/logos/${key}.svg`
+
+        // Primary record section for this CRM
+        let recordContent = ''
+        if (data.primaryRecord) {
+          const r = data.primaryRecord
+          const link = r.caseUrl
+            ? `<a class="record-number" href="${r.caseUrl}" target="_blank" style="color:${brand.primary}">#${r.displayNumber}</a>`
+            : `<span class="record-number" style="color:${brand.primary}">#${r.displayNumber}</span>`
+          recordContent = `
+            <div style="margin-bottom:8px">
+              <div class="section-label">${brand.recordLabel}</div>
+              <div class="record-meta">${link} ${statusBadge(r.status)} ${r.dueDate ? `<span class="due-label">Due: ${r.dueDate}</span>` : ''}</div>
+              ${r.subject ? `<div style="font-size:12px;color:var(--muted)">${r.subject}</div>` : ''}
+            </div>`
+        } else {
+          recordContent = `
+            <div style="margin-bottom:8px">
+              <div class="section-label">${brand.recordLabel}</div>
+              <div class="empty-state">No open ${brand.recordLabel.toLowerCase()} found.</div>
+            </div>`
+        }
+
+        // Recent records section for this CRM
+        let recentContent = ''
+        if (data.recentRecords && data.recentRecords.length) {
+          recentContent = `<div class="section-label" style="margin-top:8px">${brand.recentLabel}</div>`
+          data.recentRecords.forEach(r => {
+            const link = r.caseUrl
+              ? `<a class="record-number" href="${r.caseUrl}" target="_blank" style="color:${brand.primary}">#${r.displayNumber}</a>`
+              : `<span class="record-number" style="color:${brand.primary}">#${r.displayNumber}</span>`
+            recentContent += `<div class="recent-row">
+              <div class="recent-left">
+                ${link}
+                ${r.subject ? `<span class="recent-subject">${r.subject}</span>` : ''}
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
+                ${statusBadge(r.status)}
+                ${r.dueDate ? `<span class="due-label">${r.dueDate}</span>` : ''}
+              </div>
+            </div>`
+          })
+        }
+
+        html += `
+          <div class="crm-panel">
+            <div class="crm-panel-header" style="background:${brand.bg};border-left:3px solid ${brand.primary}">
+              <img class="crm-panel-logo" src="${logoUrl}" alt="${brand.name}"
+                   onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+              <div style="display:none;width:20px;height:20px;background:${brand.primary};border-radius:4px;color:white;font-weight:700;font-size:9px;align-items:center;justify-content:center;flex-shrink:0">${brand.name.slice(0,2).toUpperCase()}</div>
+              <span class="crm-panel-name" style="color:${brand.accent}">${brand.name}</span>
+            </div>
+            <div class="crm-panel-body">
+              ${recordContent}
+              ${recentContent}
+            </div>
+          </div>`
+      })
+    }
+  }
+
   root.innerHTML = html
   root.dataset.loaded = '1'
   lastRenderedPhone = phone
