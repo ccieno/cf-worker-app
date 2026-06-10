@@ -584,8 +584,8 @@ async function renderApp() {
     </div>`
   }
 
-  // ── Primary record card ──
-  if (data.primaryRecord) {
+  // ── Primary record + recent cards (hidden in combination mode — CRM panels cover these) ──
+  if (cfg.brand !== 'combination' && data.primaryRecord) {
     const r = data.primaryRecord
     const link = r.caseUrl
       ? `<a class="record-number" href="${r.caseUrl}" target="_blank">#${r.displayNumber}</a>`
