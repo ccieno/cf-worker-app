@@ -687,12 +687,19 @@ async function handleRecordCreate(request, env) {
     if (config.backend === 'salesforce') {
       const accessToken = await getSalesforceAccessToken(env)
 
-      const contactQuery = `SELECT Id FROM Contact WHERE Phone='${escapeSoql(phone)}' LIMIT 1`
-      const contactResult = await salesforceQuery(contactQuery, accessToken, env)
-      const contactRow = Array.isArray(contactResult.records) && contactResult.records.length
-        ? contactResult.records[0] : null
+      // Prefer the contactId passed directly (e.g. after a picker selection),
+      // fall back to phone lookup if not available
+      let contactId = body.customerId || null
+      if (!contactId) {
+        const p             = escapeSoql(phone)
+        const contactQuery  = `SELECT Id FROM Contact WHERE Phone='${p}' OR MobilePhone='${p}' LIMIT 1`
+        const contactResult = await salesforceQuery(contactQuery, accessToken, env)
+        const contactRow    = contactResult.records?.[0] || null
+        if (!contactRow) return Response.json({ error: 'Contact not found for phone' }, { status: 404 })
+        contactId = contactRow.Id
+      }
 
-      if (!contactRow) return Response.json({ error: 'Contact not found for phone' }, { status: 404 })
+      const contactRow = { Id: contactId }
 
       const casePayload = { ContactId: contactRow.Id, Subject: subject, Status: status, Description: description }
       const url = `${env.SALESFORCE_BASE_URL}/services/data/v66.0/sobjects/Case`

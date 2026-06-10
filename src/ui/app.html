@@ -788,11 +788,12 @@ async function createRecord() {
   const subject = document.getElementById('createSubject').value
   const status = document.getElementById('createStatus').value
   const description = document.getElementById('createDescription').value
-  const phone = latestData.engagement.normalizedPhone
+  const phone      = latestData.engagement.normalizedPhone
+  const customerId = latestData.customer?.id || null
   const res = await fetch('/api/record/create', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ phone, subject, status, description })
+    body: JSON.stringify({ phone, subject, status, description, customerId })
   })
   const d = await res.json()
   if (d.ok) { showToast('Record created'); closeModal('createModal'); lastRenderedPhone = null; renderApp() }
