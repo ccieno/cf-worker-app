@@ -688,7 +688,7 @@ async function handleRecordCreate(request, env) {
       return Response.json({ ok: true, created: payload })
     }
 
-    if (config.backend === 'salesforce') {
+    if (effectiveBackend === 'salesforce') {
       const accessToken = await getSalesforceAccessToken(env)
 
       // Prefer the contactId passed directly (e.g. after a picker selection),
@@ -703,9 +703,7 @@ async function handleRecordCreate(request, env) {
         contactId = contactRow.Id
       }
 
-      const contactRow = { Id: contactId }
-
-      const casePayload = { ContactId: contactRow.Id, Subject: subject, Status: status, Description: description }
+      const casePayload = { ContactId: contactId, Subject: subject, Status: status, Description: description }
       const url = `${env.SALESFORCE_BASE_URL}/services/data/v66.0/sobjects/Case`
 
       const sfRes  = await fetch(url, {
@@ -719,7 +717,56 @@ async function handleRecordCreate(request, env) {
       return Response.json({ ok: true, created: sfData })
     }
 
-    return Response.json({ error: `Unknown backend: ${config.backend}` }, { status: 500 })
+    if (effectiveBackend === 'hubspot') {
+      const hsToken   = env.HUBSPOT_TOKEN
+      const hsHeaders = { 'Authorization': `Bearer ${hsToken}`, 'Content-Type': 'application/json' }
+
+      // Find or use the contact id
+      let contactId = body.customerId || null
+      if (!contactId) {
+        const searchPayload = {
+          filterGroups: [
+            { filters: [{ propertyName: 'phone',       operator: 'EQ', value: phone }] },
+            { filters: [{ propertyName: 'mobilephone', operator: 'EQ', value: phone }] }
+          ],
+          properties: ['firstname', 'lastname'],
+          limit: 1
+        }
+        const srRes  = await fetch('https://api.hubapi.com/crm/v3/objects/contacts/search', {
+          method: 'POST', headers: hsHeaders, body: JSON.stringify(searchPayload)
+        })
+        const srData = await srRes.json().catch(() => ({}))
+        contactId = srData.results?.[0]?.id || null
+      }
+
+      // Create ticket
+      const ticketPayload = {
+        properties: {
+          subject:            subject,
+          content:            description,
+          hs_pipeline:        '0',
+          hs_pipeline_stage:  '1',
+          hs_ticket_priority: status === 'High' ? 'HIGH' : 'MEDIUM'
+        }
+      }
+      const ticketRes  = await fetch('https://api.hubapi.com/crm/v3/objects/tickets', {
+        method: 'POST', headers: hsHeaders, body: JSON.stringify(ticketPayload)
+      })
+      const ticketData = await ticketRes.json().catch(() => ({}))
+      if (!ticketRes.ok) return Response.json({ error: 'HubSpot ticket create failed', details: ticketData }, { status: 500 })
+
+      // Associate ticket → contact if we have one
+      if (contactId) {
+        await fetch(
+          `https://api.hubapi.com/crm/v3/objects/tickets/${ticketData.id}/associations/contacts/${contactId}/ticket_to_contact`,
+          { method: 'PUT', headers: hsHeaders, body: '{}' }
+        ).catch(() => {})
+      }
+
+      return Response.json({ ok: true, created: ticketData })
+    }
+
+    return Response.json({ error: `Unknown backend: ${effectiveBackend}` }, { status: 500 })
   } catch (err) {
     return Response.json({ error: String(err?.message || err) }, { status: 500 })
   }

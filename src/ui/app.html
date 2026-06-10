@@ -430,6 +430,8 @@ let renderNonce = 0
 // Persists the contact chosen from the picker so refreshes don't re-show it
 let selectedContactId = null
 let selectedContactBackend = null
+// Which CRM the create modal was opened for (null = primary/default)
+let createTargetCrm = null
 
 // Brand colours / labels for each CRM key — used when rendering combination mode cards
 const CRM_BRANDS = {
@@ -726,15 +728,19 @@ async function updatePrimaryStatus() {
   else showToast('Update failed', false)
 }
 
-function openCreateModal() {
+function openCreateModal(crmKey) {
+  createTargetCrm = crmKey || null
   const cfg = (latestData && latestData.config) || {}
-  const label = cfg.primary_record_label || 'Record'
+  // When a specific CRM panel triggers this, use that CRM's record label
+  const brand = crmKey ? (CRM_BRANDS[crmKey] || CRM_BRANDS.custom_crm) : null
+  const label = brand ? brand.recordLabel : (cfg.primary_record_label || 'Record')
+  const crmName = brand ? ` (${brand.name})` : ''
   const m = document.createElement('div')
   m.id = 'createModal'
   m.className = 'modal-overlay'
   m.innerHTML = `
     <div class="modal-card">
-      <div class="modal-title">${cfg.create_label || 'Create ' + label}</div>
+      <div class="modal-title">${brand ? `New ${label}${crmName}` : (cfg.create_label || 'Create ' + label)}</div>
       <div class="form-row">
         <label class="form-label">Subject</label>
         <input id="createSubject" placeholder="Brief description">
