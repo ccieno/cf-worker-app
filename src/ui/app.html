@@ -521,6 +521,12 @@ async function renderApp() {
   </div>`
 
   // ── Contact picker (multiple matches) ──
+  // If the user already picked a contact this call, auto-reselect instead of showing picker
+  if (data.customerMatches && data.customerMatches.length > 1 && selectedContactId) {
+    selectContact(selectedContactId, selectedContactBackend)
+    return
+  }
+
   if (data.customerMatches && data.customerMatches.length > 1) {
     html += `<div class="card">
       <div class="section-label">${cfg.customer_label || 'Customer'}</div>
@@ -828,6 +834,10 @@ async function saveCustomer() {
 }
 
 async function selectContact(contactId, backend) {
+  // Remember so action refreshes don't re-show the picker
+  selectedContactId      = contactId
+  selectedContactBackend = backend
+
   const root = document.getElementById('app')
   root.innerHTML = '<div class="loading"><div class="spinner"></div>Loading contact…</div>'
 
