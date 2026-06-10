@@ -13,7 +13,7 @@ For all limits and quotas, retrieve from the product's `/platform/limits/` page.
 
 | Command | Purpose |
 |---------|---------|
-| `npx wrangler dev` | Local development |
+| `npx wrangler dev` | Local /development |
 | `npx wrangler deploy` | Deploy to Cloudflare |
 | `npx wrangler types` | Generate TypeScript types |
 
