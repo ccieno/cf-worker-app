@@ -407,10 +407,25 @@ async function handleLookup(request, env) {
     const normalizedPhone = normalizePhone(incomingPhone)
 
     let result
-    if (config.backend === 'salesforce') {
+    if (config.brand === 'combination' && config.combination_crms) {
+      // Combination mode: look up from each CRM in parallel
+      const comboKeys = config.combination_crms.split(',').filter(Boolean)
+      const lookupResults = await Promise.all(
+        comboKeys.map(key =>
+          lookupForBrand(key, { phone: normalizedPhone, email: incomingEmail, env })
+            .catch(err => ({ customer: null, primaryRecord: null, recentRecords: [], error: String(err?.message || err) }))
+        )
+      )
+      // Primary CRM (first in list) drives the top-level customer/record fields
+      const primaryResult = lookupResults[0] || {}
+      const crmResults = {}
+      comboKeys.forEach((key, i) => { crmResults[key] = lookupResults[i] })
+      result = { ...primaryResult, crmResults }
+    } else if (config.backend === 'salesforce') {
       result = await lookupSalesforce({ phone: normalizedPhone, email: incomingEmail, env })
+    } else if (config.backend === 'hubspot') {
+      result = await lookupHubspot({ phone: normalizedPhone, email: incomingEmail, env })
     } else {
-      // All other brands (servicenow, hubspot, zendesk, dynamics, halo, custom_crm) use mock CRM
       result = await lookupMockCrm({ phone: normalizedPhone, email: incomingEmail, env })
     }
 
