@@ -844,12 +844,14 @@ async function selectContact(contactId, backend) {
 
   if (!data.ok) { showToast('Failed to load contact', false); return }
 
-  // Re-render with the resolved contact — pass the merged data directly
+  // Re-render with the resolved contact
   const nonce = renderNonce
   const html  = buildAppHtml(data)
   if (nonce === renderNonce) {
     root.innerHTML = html
     root.dataset.loaded = '1'
+    // Tell the polling loop this phone is already rendered so it doesn't re-fetch
+    lastRenderedPhone = latestData.engagement?.normalizedPhone || lastRenderedPhone
   }
 }
 
