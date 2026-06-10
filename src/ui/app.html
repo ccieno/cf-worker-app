@@ -817,6 +817,124 @@ async function saveCustomer() {
   else showToast('Update failed', false)
 }
 
+async function selectContact(contactId, backend) {
+  const root = document.getElementById('app')
+  root.innerHTML = '<div class="loading"><div class="spinner"></div>Loading contact…</div>'
+
+  const res  = await fetch('/api/lookup/select', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contactId, backend })
+  })
+  const data = await res.json()
+
+  // Merge into latestData so the rest of the UI (edit modal etc.) works normally
+  latestData = { ...latestData, ...data, customerMatches: null }
+
+  // Apply any brand CSS updates from config
+  const cfg = data.config || {}
+  document.documentElement.style.setProperty('--brand',      cfg.primary_hex  || '#4F46E5')
+  document.documentElement.style.setProperty('--brand-dark', cfg.accent_hex   || '#3730A3')
+  document.documentElement.style.setProperty('--brand-bg',   cfg.secondary_hex || '#EEF2FF')
+
+  // Prevent the polling loop from re-rendering back to the picker
+  lastRenderedPhone = null
+  renderNonce++
+
+  if (!data.ok) { showToast('Failed to load contact', false); return }
+
+  // Re-render with the resolved contact — pass the merged data directly
+  const nonce = renderNonce
+  const html  = buildAppHtml(data)
+  if (nonce === renderNonce) {
+    root.innerHTML = html
+    root.dataset.loaded = '1'
+  }
+}
+
+// Extracted render helper so selectContact can reuse it
+function buildAppHtml(data) {
+  const cfg = data.config || {}
+  let html = ''
+
+  html += `<div class="header-card">
+    <img class="crm-logo" src="${cfg.logo_url}" alt="${cfg.app_title}">
+    <span class="crm-title">${cfg.app_title}</span>
+  </div>`
+
+  if (data.customer) {
+    const c = data.customer
+    html += `<div class="card">
+      <div class="section-label">${cfg.customer_label || 'Customer'}</div>
+      <div class="customer-grid">
+        <div class="field-row full">
+          <span class="field-label">Name</span>
+          <span class="field-value" style="font-size:14px;font-weight:700">${c.name}</span>
+        </div>
+        <div class="field-row">
+          <span class="field-label">Email</span>
+          <span class="field-value">${c.email}</span>
+        </div>
+        <div class="field-row">
+          <span class="field-label">Phone</span>
+          <span class="field-value">${c.phone}</span>
+        </div>
+        <div class="field-row">
+          <span class="field-label">${cfg.customer_tier_label || 'Tier'}</span>
+          <span class="field-value">${tierBadge(c.tierOrStatus)}</span>
+        </div>
+      </div>
+      <div class="actions">
+        <button onclick="openCustomerEdit()">Edit ${cfg.customer_label || 'Customer'}</button>
+      </div>
+    </div>`
+  }
+
+  if (data.primaryRecord) {
+    const r    = data.primaryRecord
+    const link = r.caseUrl
+      ? `<a class="record-number" href="${r.caseUrl}" target="_blank">#${r.displayNumber}</a>`
+      : `<span class="record-number">#${r.displayNumber}</span>`
+    html += `<div class="card">
+      <div class="section-label">${cfg.primary_record_label || 'Record'}</div>
+      <div class="record-meta">${link} ${statusBadge(r.status)} ${r.dueDate ? `<span class="due-label">Due: ${r.dueDate}</span>` : ''}</div>
+      ${r.subject ? `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">${r.subject}</div>` : ''}
+      <div class="status-editor">
+        <select id="statusInput">
+          ${['New','Open','Pending','Closed','Resolved'].map(s =>
+            `<option value="${s}"${r.status === s ? ' selected' : ''}>${s}</option>`
+          ).join('')}
+        </select>
+        <button onclick="updatePrimaryStatus()">Save</button>
+      </div>
+    </div>`
+  } else {
+    html += `<div class="card">
+      <div class="section-label">${cfg.primary_record_label || 'Record'}</div>
+      <div class="empty-state">No open ${(cfg.primary_record_label || 'record').toLowerCase()} found.</div>
+      <div class="actions"><button onclick="openCreateModal()">${cfg.create_label || 'Create New'}</button></div>
+    </div>`
+  }
+
+  if (data.recentRecords && data.recentRecords.length) {
+    html += `<div class="card"><div class="section-label">${cfg.recent_records_label || 'Recent Records'}</div>`
+    data.recentRecords.forEach(r => {
+      const link = r.caseUrl
+        ? `<a class="record-number" href="${r.caseUrl}" target="_blank">#${r.displayNumber}</a>`
+        : `<span class="record-number">#${r.displayNumber}</span>`
+      html += `<div class="recent-row">
+        <div class="recent-left">${link}${r.subject ? `<span class="recent-subject">${r.subject}</span>` : ''}</div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
+          ${statusBadge(r.status)}${r.dueDate ? `<span class="due-label">${r.dueDate}</span>` : ''}
+        </div>
+      </div>`
+    })
+    html += '</div>'
+  }
+
+  return html
+}
+
 renderApp()
 setInterval(renderApp, 2000)
 </script>
