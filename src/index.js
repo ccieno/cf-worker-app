@@ -273,6 +273,37 @@ function getBrandPreset(key) {
 }
 
 // ─────────────────────────────────────────
+// Debug Handler — Salesforce raw lookup
+// ─────────────────────────────────────────
+
+async function handleDebugSalesforce(request, env) {
+  try {
+    const url   = new URL(request.url)
+    const phone = url.searchParams.get('phone') || ''
+    if (!phone) return Response.json({ error: 'Pass ?phone=+447...' }, { status: 400 })
+
+    const normalized = normalizePhone(phone)
+    const p          = escapeSoql(normalized)
+    const soql       = `SELECT Id,Name,Email,Phone,MobilePhone,MailingAddress,Status__c,LastModifiedDate FROM Contact WHERE Phone='${p}' OR MobilePhone='${p}' ORDER BY LastModifiedDate DESC LIMIT 1`
+
+    let tokenError = null
+    let accessToken = null
+    try {
+      accessToken = await getSalesforceAccessToken(env)
+    } catch (e) {
+      tokenError = String(e?.message || e)
+    }
+
+    if (tokenError) return Response.json({ normalized, soql, tokenError })
+
+    const result = await salesforceQuery(soql, accessToken, env)
+    return Response.json({ normalized, soql, result }, { headers: { 'Content-Type': 'application/json' } })
+  } catch (err) {
+    return Response.json({ error: String(err?.message || err) }, { status: 500 })
+  }
+}
+
+// ─────────────────────────────────────────
 // API Handlers — Config
 // ─────────────────────────────────────────
 
