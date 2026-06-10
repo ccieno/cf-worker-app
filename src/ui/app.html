@@ -1045,13 +1045,23 @@ function buildAppHtml(data) {
   return html
 }
 
-// Intercept all record/ticket links — ZCC webviews may not honour target="_blank" on <a> tags
+// Intercept all record/ticket links.
+// ZCC webviews block window.open() and target="_blank" — use zoomSdk.openUrl() instead.
 document.addEventListener('click', e => {
   const link = e.target.closest('a.record-number')
   if (!link || !link.href) return
   e.preventDefault()
   e.stopPropagation()
-  window.open(link.href, '_blank', 'noopener,noreferrer')
+  const url = link.href
+  try {
+    if (typeof zoomSdk !== 'undefined' && typeof zoomSdk.openUrl === 'function') {
+      zoomSdk.openUrl({ url })
+    } else {
+      window.open(url, '_blank', 'noopener,noreferrer')
+    }
+  } catch (_) {
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
 })
 
 renderApp()

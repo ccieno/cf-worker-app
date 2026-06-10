@@ -923,7 +923,7 @@ async function lookupHubspot({ phone, email, env }) {
         dueDate:       tp.createdate ? tp.createdate.split('T')[0] : '',
         description:   tp.content || '',
         lastUpdated:   '',
-        caseUrl:       portalId ? `https://app.hubspot.com/contacts/${portalId}/ticket/${t.id}` : ''
+        caseUrl:       `https://app.hubspot.com/contacts/${portalId || 'redirect'}/ticket/${t.id}`
       }
     })
 
