@@ -1045,6 +1045,15 @@ function buildAppHtml(data) {
   return html
 }
 
+// Intercept all record/ticket links — ZCC webviews may not honour target="_blank" on <a> tags
+document.addEventListener('click', e => {
+  const link = e.target.closest('a.record-number')
+  if (!link || !link.href) return
+  e.preventDefault()
+  e.stopPropagation()
+  window.open(link.href, '_blank', 'noopener,noreferrer')
+})
+
 renderApp()
 setInterval(renderApp, 2000)
 </script>
