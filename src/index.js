@@ -651,7 +651,11 @@ async function handleRecordCreate(request, env) {
     if (!subject) return Response.json({ error: 'subject is required' }, { status: 400 })
     if (!status)  return Response.json({ error: 'status is required' }, { status: 400 })
 
-    if (config.backend === 'custom_crm') {
+    // In combination mode (or when the frontend specifies a CRM explicitly), honour targetBackend
+    const effectiveBackend = body.targetBackend || config.backend
+
+    if (effectiveBackend === 'custom_crm' || (effectiveBackend !== 'salesforce' && effectiveBackend !== 'hubspot')) {
+      // ── any mock-backed CRM ──
       const token = env.MOCK_API_TOKEN
       const base  = env.MOCK_API_BASE_URL
 
