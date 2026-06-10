@@ -1045,16 +1045,22 @@ function buildAppHtml(data) {
   return html
 }
 
-// Record/ticket links — let native anchor target="_blank" behaviour run so Electron/Zoom
-// can intercept and open in the system browser. No preventDefault here.
-// Also fire zoomSdk.openUrl() for ZCC contexts that need the explicit SDK call.
+// Record/ticket link clicks.
+// ZCC panel webviews block all external navigation, so we copy the URL to clipboard
+// and show a toast — the agent can paste it in their browser.
 document.addEventListener('click', e => {
   const link = e.target.closest('a.record-number')
   if (!link) return
   const url = link.getAttribute('href')
   if (!url) return
-  if (typeof zoomSdk !== 'undefined' && typeof zoomSdk.openUrl === 'function') {
-    zoomSdk.openUrl({ url }).catch(() => {})
+  e.preventDefault()
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url)
+      .then(() => showToast('Link copied — paste in your browser'))
+      .catch(() => showToast(url, true))   // fallback: show URL in toast
+  } else {
+    showToast(url, true)
   }
 })
 
