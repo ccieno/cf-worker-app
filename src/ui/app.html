@@ -475,7 +475,7 @@ function extractPhone(zoom) {
 
 async function getZoom() {
   if (typeof zoomSdk === 'undefined') return {}
-  await zoomSdk.config({ version: '0.16', capabilities: ['getRunningContext','getEngagementStatus'] })
+  await zoomSdk.config({ version: '0.16', capabilities: ['getRunningContext','getEngagementStatus','openUrl'] })
   const engagementStatus = await zoomSdk.getEngagementStatus()
   return { engagementStatus }
 }
@@ -1045,23 +1045,24 @@ function buildAppHtml(data) {
   return html
 }
 
-// Intercept all record/ticket links.
-// ZCC webviews block window.open() and target="_blank" — use zoomSdk.openUrl() instead.
+// Intercept record/ticket link clicks.
+// In ZCC the webview blocks window.open() and target="_blank", so we use zoomSdk.openUrl().
+// openUrl must be declared in the zoomSdk.config() capabilities above to work.
 document.addEventListener('click', e => {
   const link = e.target.closest('a.record-number')
-  if (!link || !link.href) return
-  e.preventDefault()
-  e.stopPropagation()
-  const url = link.href
-  try {
-    if (typeof zoomSdk !== 'undefined' && typeof zoomSdk.openUrl === 'function') {
-      zoomSdk.openUrl({ url })
-    } else {
+  if (!link) return
+  const url = link.getAttribute('href')
+  if (!url) return
+
+  if (typeof zoomSdk !== 'undefined' && typeof zoomSdk.openUrl === 'function') {
+    // Running inside ZCC — must use the SDK
+    e.preventDefault()
+    zoomSdk.openUrl({ url }).catch(() => {
+      // SDK failed (e.g. not in ZCC client) — fall back to normal navigation
       window.open(url, '_blank', 'noopener,noreferrer')
-    }
-  } catch (_) {
-    window.open(url, '_blank', 'noopener,noreferrer')
+    })
   }
+  // else: running in a plain browser — let the native target="_blank" do its job
 })
 
 renderApp()
