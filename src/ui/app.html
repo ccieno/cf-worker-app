@@ -705,6 +705,10 @@ async function renderApp() {
             <div class="crm-panel-body">
               ${recordContent}
               ${recentContent}
+              <div class="actions" style="margin-top:10px">
+                <button style="background:${brand.primary};font-size:11px;padding:5px 10px"
+                        onclick="openCreateModal('${crmKey}')">${brand.createLabel}</button>
+              </div>
             </div>
           </div>`
       })
@@ -806,15 +810,24 @@ function closeModal(id) {
 }
 
 async function createRecord() {
-  const subject = document.getElementById('createSubject').value
-  const status = document.getElementById('createStatus').value
+  const subject     = document.getElementById('createSubject').value
+  const status      = document.getElementById('createStatus').value
   const description = document.getElementById('createDescription').value
-  const phone      = latestData.engagement.normalizedPhone
-  const customerId = latestData.customer?.id || null
+  const phone       = latestData.engagement.normalizedPhone
+
+  // In combination mode, use the selected CRM's customer id if available
+  let customerId = latestData.customer?.id || null
+  if (createTargetCrm && latestData.crmResults?.[createTargetCrm]?.customer?.id) {
+    customerId = latestData.crmResults[createTargetCrm].customer.id
+  }
+
+  const body = { phone, subject, status, description, customerId }
+  if (createTargetCrm) body.targetBackend = createTargetCrm
+
   const res = await fetch('/api/record/create', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ phone, subject, status, description, customerId })
+    body: JSON.stringify(body)
   })
   const d = await res.json()
   if (d.ok) { showToast('Record created'); closeModal('createModal'); lastRenderedPhone = null; renderApp() }
@@ -1017,7 +1030,13 @@ function buildAppHtml(data) {
             <div style="display:none;width:20px;height:20px;background:${brand.primary};border-radius:4px;color:white;font-weight:700;font-size:9px;align-items:center;justify-content:center;flex-shrink:0">${brand.name.slice(0,2).toUpperCase()}</div>
             <span class="crm-panel-name" style="color:${brand.accent}">${brand.name}</span>
           </div>
-          <div class="crm-panel-body">${recordContent}${recentContent}</div>
+          <div class="crm-panel-body">
+            ${recordContent}${recentContent}
+            <div class="actions" style="margin-top:10px">
+              <button style="background:${brand.primary};font-size:11px;padding:5px 10px"
+                      onclick="openCreateModal('${key}')">${brand.createLabel}</button>
+            </div>
+          </div>
         </div>`
       })
     }
