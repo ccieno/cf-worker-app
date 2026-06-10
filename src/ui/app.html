@@ -829,28 +829,34 @@ async function selectContact(contactId, backend) {
   })
   const data = await res.json()
 
-  // Merge into latestData so the rest of the UI (edit modal etc.) works normally
-  latestData = { ...latestData, ...data, customerMatches: null }
-
-  // Apply any brand CSS updates from config
-  const cfg = data.config || {}
-  document.documentElement.style.setProperty('--brand',      cfg.primary_hex  || '#4F46E5')
-  document.documentElement.style.setProperty('--brand-dark', cfg.accent_hex   || '#3730A3')
-  document.documentElement.style.setProperty('--brand-bg',   cfg.secondary_hex || '#EEF2FF')
-
-  // Prevent the polling loop from re-rendering back to the picker
-  lastRenderedPhone = null
-  renderNonce++
-
   if (!data.ok) { showToast('Failed to load contact', false); return }
 
-  // Re-render with the resolved contact
+  // Merge into latestData — keep existing engagement, crmResults etc.
+  latestData = { ...latestData, ...data, customerMatches: null }
+
+  // In combination mode, patch the selected backend's crmResults entry with the
+  // newly resolved contact so the branded panels show the right data
+  if (latestData.config?.brand === 'combination' && latestData.crmResults) {
+    latestData.crmResults[backend] = {
+      customer:      data.customer,
+      primaryRecord: data.primaryRecord,
+      recentRecords: data.recentRecords
+    }
+  }
+
+  // Apply brand CSS
+  const cfg = latestData.config || {}
+  document.documentElement.style.setProperty('--brand',      cfg.primary_hex   || '#4F46E5')
+  document.documentElement.style.setProperty('--brand-dark', cfg.accent_hex    || '#3730A3')
+  document.documentElement.style.setProperty('--brand-bg',   cfg.secondary_hex || '#EEF2FF')
+
+  // Prevent polling loop from re-fetching and going back to the picker
+  renderNonce++
   const nonce = renderNonce
-  const html  = buildAppHtml(data)
+  const html  = buildAppHtml(latestData)
   if (nonce === renderNonce) {
     root.innerHTML = html
     root.dataset.loaded = '1'
-    // Tell the polling loop this phone is already rendered so it doesn't re-fetch
     lastRenderedPhone = latestData.engagement?.normalizedPhone || lastRenderedPhone
   }
 }
