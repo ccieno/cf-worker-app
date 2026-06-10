@@ -862,12 +862,16 @@ async function lookupHubspot({ phone, email, env }) {
     limit: 1
   }
 
-  const searchRes  = await fetch('https://api.hubapi.com/crm/v3/objects/contacts/search', {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(searchPayload)
-  })
-  const searchData = await searchRes.json().catch(() => ({}))
+  // Fetch portal ID (needed for ticket URLs) alongside the contact search
+  const [searchRes, accountRes] = await Promise.all([
+    fetch('https://api.hubapi.com/crm/v3/objects/contacts/search', {
+      method: 'POST', headers, body: JSON.stringify(searchPayload)
+    }),
+    fetch('https://api.hubapi.com/account-info/v3/details', { headers })
+  ])
+  const searchData  = await searchRes.json().catch(() => ({}))
+  const accountData = await accountRes.json().catch(() => ({}))
+  const portalId    = accountData.portalId || ''
 
   if (!searchData.total || searchData.total === 0) {
     return { customer: null, primaryRecord: null, recentRecords: [] }
@@ -919,7 +923,7 @@ async function lookupHubspot({ phone, email, env }) {
         dueDate:       tp.createdate ? tp.createdate.split('T')[0] : '',
         description:   tp.content || '',
         lastUpdated:   '',
-        caseUrl:       `https://app.hubspot.com/contacts/tickets/${t.id}`
+        caseUrl:       portalId ? `https://app.hubspot.com/contacts/${portalId}/ticket/${t.id}` : ''
       }
     })
 
