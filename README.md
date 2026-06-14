@@ -22,7 +22,7 @@ Select **Multi-CRM** in the admin CRM Branding tab to combine any two or more CR
 | Runtime | Cloudflare Worker (JavaScript) |
 | Database | Cloudflare D1 (`zcc_crm_demo`) |
 | Storage | Inline HTML served from the worker bundle |
-| Auth | None (demo use only) |
+| Auth | Cloudflare Access (Google SSO) — see `ACCESS.md` |
 
 ## API endpoints
 

@@ -4,6 +4,14 @@ import HARNESS_HTML from './ui/harness.html'
 
 export default {
   async fetch(request, env, ctx) {
+    // ── Cloudflare Access (Google SSO) ──────────────────────────────────────
+    // Cloudflare Access injects this header after the user authenticates.
+    // Any request without it has not passed through the Access gate.
+    const identity = request.headers.get('Cf-Access-Authenticated-User-Email')
+    if (!identity) {
+      return new Response('Authentication required', { status: 401 })
+    }
+
     const url  = new URL(request.url)
     const path = url.pathname
 
