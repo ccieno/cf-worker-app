@@ -11,7 +11,7 @@ A Cloudflare Worker that powers the Zoom Contact Centre CRM integration demo. It
 - Creates and updates customer records and support cases
 - Provides an admin panel for seeding and resetting demo data
 
-### Multi-CRM Combination Mode
+### Multi-CRM Combination Modes
 
 Select **Multi-CRM** in the admin CRM Branding tab to combine any two or more CRMs into a single view. The first CRM selected is "primary" and drives the contact card styling and labels. The agent app then renders a branded panel per CRM below the contact card — each styled with that CRM's own colours and logo — allowing side-by-side demos of multiple integrations in one screen.
 
