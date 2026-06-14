@@ -2,7 +2,7 @@
 
 A Cloudflare Worker that powers the Zoom Contact Centre CRM integration demo. It serves a branded web UI and provides a REST API that ZCC flows and demo frontends use to look up customer records, create/update cases, and manage demo data.
 
-**Deployed at:** `app.eno.solutions/admin` LIVE 14.6.26
+**Deployed at:** `app.eno.solutions/admin` 
 
 ## What it does
 
