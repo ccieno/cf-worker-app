@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Eno Solutions · SMS</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #EFF2F7;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 32px 16px 48px;
+    }
+    .back { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #6b7280; text-decoration: none; margin-bottom: 20px; align-self: flex-start; }
+    .back:hover { color: #111827; }
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 32px rgba(0,0,0,0.10);
+      padding: 40px 44px;
+      width: 100%;
+      max-width: 500px;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 36px;
+      border-bottom: 1.5px solid #F0F1F3;
+      padding-bottom: 28px;
+    }
+    .logo {
+      width: 44px; height: 44px;
+      background: #0B5CFF;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .logo svg { width: 26px; height: 26px; }
+    .header-text h1 { font-size: 18px; font-weight: 700; color: #111827; letter-spacing: -0.3px; }
+    .header-text p  { font-size: 13px; color: #6B7280; margin-top: 2px; }
+    .form-group { margin-bottom: 22px; }
+    label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 7px; }
+    label .required { color: #EF4444; margin-left: 2px; }
+    select, input[type="tel"], textarea {
+      width: 100%; padding: 10px 14px;
+      border: 1.5px solid #D1D5DB; border-radius: 8px;
+      font-size: 14px; color: #111827; background: #fff;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      appearance: none; -webkit-appearance: none;
+    }
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; cursor: pointer;
+    }
+    select:focus, input[type="tel"]:focus, textarea:focus {
+      border-color: #0B5CFF; box-shadow: 0 0 0 3px rgba(11,92,255,0.12);
+    }
+    select:disabled { background-color: #F9FAFB; color: #9CA3AF; cursor: not-allowed; }
+    textarea { resize: vertical; min-height: 110px; line-height: 1.5; font-family: inherit; }
+    .field-hint { font-size: 12px; color: #9CA3AF; margin-top: 5px; }
+    .char-row { display: flex; justify-content: space-between; align-items: center; margin-top: 5px; }
+    .char-hint { font-size: 12px; color: #9CA3AF; }
+    .char-count { font-size: 12px; font-weight: 600; color: #9CA3AF; transition: color 0.15s; }
+    .char-count.warn { color: #F59E0B; }
+    .char-count.over { color: #EF4444; }
+    .btn-send {
+      width: 100%; padding: 13px;
+      background: #0B5CFF; color: #fff; border: none; border-radius: 9px;
+      font-size: 15px; font-weight: 700; cursor: pointer; letter-spacing: 0.1px;
+      transition: background 0.15s, opacity 0.15s, transform 0.1s;
+      margin-top: 4px; display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-send:hover:not(:disabled) { background: #0047D0; }
+    .btn-send:active:not(:disabled) { transform: scale(0.99); }
+    .btn-send:disabled { opacity: 0.55; cursor: not-allowed; }
+    .status {
+      margin-top: 22px; padding: 13px 16px; border-radius: 9px;
+      font-size: 14px; line-height: 1.5; display: none; animation: fadeIn 0.2s ease;
+    }
+    .status.success { display: block; background: #ECFDF5; color: #065F46; border: 1.5px solid #A7F3D0; }
+    .status.error   { display: block; background: #FEF2F2; color: #991B1B; border: 1.5px solid #FECACA; }
+    .status.loading { display: block; background: #EFF6FF; color: #1E40AF; border: 1.5px solid #BFDBFE; }
+    .status .msg-id { font-size: 12px; color: #047857; margin-top: 5px; font-family: monospace; }
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2.5px solid currentColor; border-right-color: transparent;
+      border-radius: 50%; animation: spin 0.55s linear infinite; flex-shrink: 0;
+    }
+    @keyframes spin    { to { transform: rotate(360deg); } }
+    @keyframes fadeIn  { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+    .footer { margin-top: 24px; font-size: 12px; color: #9CA3AF; text-align: center; }
+    .page-toggle {
+      display: flex; gap: 8px; margin-bottom: 20px;
+      background: #E8EDFB; border-radius: 10px; padding: 4px;
+    }
+    .page-toggle a {
+      flex: 1; text-align: center; padding: 8px 0;
+      border-radius: 7px; font-size: 13px; font-weight: 600;
+      text-decoration: none; color: #6B7280;
+      transition: background 0.15s, color 0.15s;
+    }
+    .page-toggle a.active {
+      background: #fff; color: #0B5CFF;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+    }
+    .page-toggle a:not(.active):hover { color: #374151; }
+  </style>
+</head>
+<body>
+  <a class="back" href="/">← Back to tools</a>
+  <div class="card">
+    <nav class="page-toggle">
+      <a href="/sms" class="active">&#128172; SMS</a>
+      <a href="/email">&#9993; Email</a>
+    </nav>
+    <div class="header">
+      <div class="logo">
+        <svg viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="2" y="7" width="15" height="12" rx="2.5" fill="white"/>
+          <path d="M17 11.2L24 8v10l-7-3.2V11.2z" fill="white"/>
+        </svg>
+      </div>
+      <div class="header-text">
+        <h1>Contact Centre SMS</h1>
+        <p>Send an outbound SMS message</p>
+      </div>
+    </div>
+
+    <form id="smsForm" novalidate>
+      <div class="form-group">
+        <label for="from">From (outgoing number)<span class="required">*</span></label>
+        <select id="from" name="from" required disabled>
+          <option value="">Loading numbers…</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="to">To (destination)<span class="required">*</span></label>
+        <input type="tel" id="to" name="to" placeholder="+447700900000" autocomplete="off" required />
+        <p class="field-hint">E.164 format — country code + number, no spaces (e.g. +447700900000)</p>
+      </div>
+      <div class="form-group">
+        <label for="message">Message<span class="required">*</span></label>
+        <textarea id="message" name="message" maxlength="140" placeholder="Type your message here…" required></textarea>
+        <div class="char-row">
+          <span class="char-hint">Plain text only</span>
+          <span class="char-count" id="charCount">0 / 140</span>
+        </div>
+      </div>
+      <button type="submit" class="btn-send" id="sendBtn" disabled>Send SMS</button>
+    </form>
+    <div class="status" id="status" role="alert" aria-live="polite"></div>
+  </div>
+  <p class="footer">Zoom Contact Centre · Outbound SMS</p>
+
+  <script>
+    const API_BASE    = 'https://api.eno.solutions';
+    const fromSelect  = document.getElementById('from');
+    const toInput     = document.getElementById('to');
+    const messageArea = document.getElementById('message');
+    const charCount   = document.getElementById('charCount');
+    const sendBtn     = document.getElementById('sendBtn');
+    const statusDiv   = document.getElementById('status');
+    const form        = document.getElementById('smsForm');
+
+    async function loadNumbers() {
+      try {
+        const res = await fetch(`${API_BASE}/sms/api/numbers`);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const numbers = await res.json();
+        fromSelect.innerHTML = '';
+        if (!Array.isArray(numbers) || numbers.length === 0) {
+          fromSelect.innerHTML = '<option value="">No SMS numbers found</option>'; return;
+        }
+        numbers.forEach(n => {
+          const opt = document.createElement('option');
+          opt.value = n.number;
+          opt.dataset.flowId = n.flowId || '';
+          opt.textContent = n.label;
+          fromSelect.appendChild(opt);
+        });
+        fromSelect.disabled = false;
+        sendBtn.disabled = false;
+      } catch (err) {
+        fromSelect.innerHTML = '<option value="">Failed to load — reload to retry</option>';
+        showStatus('error', 'Could not load SMS numbers: ' + err.message);
+      }
+    }
+
+    messageArea.addEventListener('input', () => {
+      const len = messageArea.value.length;
+      charCount.textContent = len + ' / 140';
+      charCount.className = 'char-count' + (len >= 140 ? ' over' : len >= 110 ? ' warn' : '');
+    });
+
+    function isE164(val) { return /^\+[1-9]\d{7,14}$/.test(val.trim()); }
+
+    function showStatus(type, html) {
+      statusDiv.className = 'status ' + type;
+      statusDiv.innerHTML = html;
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const from    = fromSelect.value;
+      const flowId  = fromSelect.selectedOptions[0]?.dataset.flowId || '';
+      const to      = toInput.value.trim();
+      const message = messageArea.value.trim();
+      if (!from)        { showStatus('error', 'Please select an outgoing number.'); return; }
+      if (!isE164(to))  { showStatus('error', 'Destination must be in E.164 format (e.g. +447700900000).'); toInput.focus(); return; }
+      if (!message)     { showStatus('error', 'Please enter a message.'); messageArea.focus(); return; }
+      sendBtn.disabled = true;
+      showStatus('loading', '<span class="spinner"></span>&nbsp; Sending…');
+      try {
+        const res = await fetch(`${API_BASE}/sms/api/send`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ from, to, message, flowId }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showStatus('success',
+            '&#10003;&nbsp; Message sent successfully!' +
+            (data.message_id    ? '<div class="msg-id">Message ID: '    + data.message_id    + '</div>' : '') +
+            (data.engagement_id ? '<div class="msg-id">Engagement ID: ' + data.engagement_id + '</div>' : '') +
+            (data.opt_in_required ? '<div class="msg-id" style="color:#92400E">&#9888; Recipient has not opted in — an opt-in invitation was sent instead.</div>' : '')
+          );
+          messageArea.value = '';
+          charCount.textContent = '0 / 140';
+          charCount.className = 'char-count';
+        } else {
+          const errMsg = data?.error?.message || (typeof data?.error === 'string' ? data.error : null) || JSON.stringify(data.error || data);
+          showStatus('error', '&#10007;&nbsp; ' + errMsg);
+        }
+      } catch (err) {
+        showStatus('error', '&#10007;&nbsp; Network error: ' + err.message);
+      } finally {
+        sendBtn.disabled = false;
+      }
+    });
+
+    loadNumbers();
+  </script>
+</body>
+</html>
