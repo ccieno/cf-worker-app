@@ -15,7 +15,7 @@
   ],
 
   "vars": {
-    "MOCK_API_BASE_URL": "https://portal.zoomdemos.com/userapi/c3RldmUuZW5vQHpvb20udXM"
+    "MOCK_API_BASE_URL": "https://portal.zoomdemos.com/userapi/YOUR_USER_ID"
   },
 
   "d1_databases": [
