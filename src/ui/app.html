@@ -471,28 +471,55 @@ function tierBadge(tier) {
 }
 
 function extractPhone(zoom) {
+  const urlPhone = new URLSearchParams(location.search).get('phone')
+  if (urlPhone) return urlPhone
   try { return zoom.engagementStatus.engagementStatus.consumers[0].consumerNumber }
   catch(e) { return '+447700900010' }
 }
 
+function extractEmail() {
+  return new URLSearchParams(location.search).get('email') || ''
+}
+
+function extractChannel() {
+  const params = new URLSearchParams(location.search)
+  if (params.get('email')) return 'email'
+  if (params.get('channel')) return params.get('channel')
+  return 'voice'
+}
+
 async function getZoom() {
   if (typeof zoomSdk === 'undefined') return {}
-  await zoomSdk.config({ version: '0.16', capabilities: ['getRunningContext','getEngagementStatus','openUrl'] })
-  const engagementStatus = await zoomSdk.getEngagementStatus()
-  return { engagementStatus }
+  try {
+    // Timeout so browser testing doesn't hang — zoomSdk.config() never resolves outside Zoom CC
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('not in Zoom CC')), 2000))
+    await Promise.race([
+      zoomSdk.config({ version: '0.16', capabilities: ['getRunningContext','getEngagementStatus','openUrl'] }),
+      timeout
+    ])
+    const engagementStatus = await zoomSdk.getEngagementStatus()
+    return { engagementStatus }
+  } catch (e) {
+    return {}
+  }
 }
 
 async function renderApp() {
   const nonce = ++renderNonce
   const root = document.getElementById('app')
 
-  const zoom = await getZoom()
-  const phone = extractPhone(zoom)
+  const zoom    = await getZoom()
+  const phone   = extractPhone(zoom)
+  const email   = extractEmail()
+  const channel = extractChannel()
 
-  if (phone === lastRenderedPhone && root.dataset.loaded === '1') return
+  // Use email as deduplication key for email/webchat channels, phone otherwise
+  const lookupKey = channel === 'email' || channel === 'webchat' ? email : phone
+
+  if (lookupKey === lastRenderedPhone && root.dataset.loaded === '1') return
 
   // New call — clear any previously selected contact
-  if (phone !== lastRenderedPhone && lastRenderedPhone !== null) {
+  if (lookupKey !== lastRenderedPhone && lastRenderedPhone !== null) {
     selectedContactId = null
     selectedContactBackend = null
   }
@@ -502,7 +529,7 @@ async function renderApp() {
   const res = await fetch('/api/lookup', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ phone })
+    body: JSON.stringify({ phone, email, channel })
   })
 
   const data = await res.json()
@@ -719,7 +746,7 @@ async function renderApp() {
 
   root.innerHTML = html
   root.dataset.loaded = '1'
-  lastRenderedPhone = phone
+  lastRenderedPhone = lookupKey
 }
 
 async function updatePrimaryStatus() {
@@ -748,11 +775,11 @@ function openCreateModal(crmKey) {
     <div class="modal-card">
       <div class="modal-title">${brand ? `New ${label}${crmName}` : (cfg.create_label || 'Create ' + label)}</div>
       <div class="form-row">
-        <label class="form-label">Subject</label>
+        <label class="form-label" for="createSubject">Subject</label>
         <input id="createSubject" placeholder="Brief description">
       </div>
       <div class="form-row">
-        <label class="form-label">Status</label>
+        <label class="form-label" for="createStatus">Status</label>
         <select id="createStatus">
           <option value="New">New</option>
           <option value="Open">Open</option>
@@ -760,7 +787,7 @@ function openCreateModal(crmKey) {
         </select>
       </div>
       <div class="form-row">
-        <label class="form-label">Notes</label>
+        <label class="form-label" for="createDescription">Notes</label>
         <textarea id="createDescription" rows="3" placeholder="Additional notes…"></textarea>
       </div>
       <div class="actions">
@@ -782,19 +809,19 @@ function openCustomerEdit() {
     <div class="modal-card">
       <div class="modal-title">Edit ${cfg.customer_label || 'Customer'}</div>
       <div class="form-row">
-        <label class="form-label">Name</label>
+        <label class="form-label" for="editName">Name</label>
         <input id="editName" value="${c.name}">
       </div>
       <div class="form-row">
-        <label class="form-label">Email</label>
+        <label class="form-label" for="editEmail">Email</label>
         <input id="editEmail" value="${c.email}">
       </div>
       <div class="form-row">
-        <label class="form-label">Address</label>
+        <label class="form-label" for="editAddress">Address</label>
         <input id="editAddress" value="${c.address || ''}">
       </div>
       <div class="form-row">
-        <label class="form-label">${cfg.customer_tier_label || 'Status'}</label>
+        <label class="form-label" for="editStatus">${cfg.customer_tier_label || 'Status'}</label>
         <input id="editStatus" value="${c.tierOrStatus}">
       </div>
       <div class="actions">
@@ -837,12 +864,18 @@ async function createRecord() {
 }
 
 async function saveCustomer() {
+  const cfg = (latestData && latestData.config) || {}
+  // In combination mode the customer always comes from the primary (first) CRM
+  const targetBackend = cfg.brand === 'combination'
+    ? (cfg.combination_crms || '').split(',').filter(Boolean)[0]
+    : undefined
   const body = {
     customerId: latestData.customer.id,
     name: document.getElementById('editName').value,
     email: document.getElementById('editEmail').value,
     address: document.getElementById('editAddress').value,
-    tierOrStatus: document.getElementById('editStatus').value
+    tierOrStatus: document.getElementById('editStatus').value,
+    ...(targetBackend ? { targetBackend } : {})
   }
   const res = await fetch('/api/customer/update', {
     method: 'POST',
@@ -851,7 +884,7 @@ async function saveCustomer() {
   })
   const d = await res.json()
   if (d.ok) { showToast('Customer updated'); closeModal('customerModal'); lastRenderedPhone = null; renderApp() }
-  else showToast('Update failed', false)
+  else { console.error('Customer update failed:', d); showToast('Update failed', false) }
 }
 
 async function selectContact(contactId, backend) {

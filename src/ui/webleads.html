@@ -141,7 +141,7 @@
 </div>
 
 <script>
-  const API_BASE = 'https://api.eno.solutions';
+  const API_BASE = 'https://app.eno.solutions';
   const ADMIN_TOKEN = 'CSTSyHD7vwNKxj9ZvaSk0Vr8GBl8rlqAw';
 
   function apiHeaders() {
@@ -178,7 +178,7 @@
     submitBtn.disabled = true;
     showStatus('loading', '<span class="spinner"></span>&nbsp; Adding contact…');
 
-    const contact = { first_name: firstName, last_name: lastName, phone_numbers: [{ number: phone }] };
+    const contact = { first_name: firstName, last_name: lastName, phone: phone };
     if (email)   contact.email_addresses = [{ email }];
     if (company) contact.company = company;
 

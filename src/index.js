@@ -40,20 +40,10 @@ export default {
     const url  = new URL(request.url)
     const path = url.pathname
 
-    // ── SSO guard (Cloudflare Access injects this header after Google login) ──
+    // Cloudflare Access handles authentication at the CDN level for protected routes.
+    // The Cf-Access-Authenticated-User-Email header is read here only to personalise
+    // pages (e.g. landing page footer) — no Worker-level auth guard needed.
     const userEmail = request.headers.get('Cf-Access-Authenticated-User-Email')
-    if (!userEmail) {
-      if (path.startsWith('/api/')) {
-        return new Response(JSON.stringify({ error: 'Authentication required', status: 401 }), {
-          status: 401,
-          headers: { 'Content-Type': 'application/json' }
-        })
-      }
-      return new Response(UNAUTHENTICATED_HTML, {
-        status: 401,
-        headers: { 'Content-Type': 'text/html; charset=utf-8' }
-      })
-    }
 
     // ── Pages ──
     if (path === '/')          return htmlResponse(LANDING_HTML, userEmail)
@@ -499,13 +489,16 @@ async function handleLookup(request, env) {
     const config = await env.DB.prepare(`SELECT * FROM config WHERE id=1 LIMIT 1`).first()
     const normalizedPhone = normalizePhone(incomingPhone)
 
+    // Email/webchat channels look up by email address; voice/SMS/other use phone
+    const byEmail = ['email', 'webchat'].includes(channel.toLowerCase())
+
     let result
     if (config.brand === 'combination' && config.combination_crms) {
       // Combination mode: look up from each CRM in parallel
       const comboKeys = config.combination_crms.split(',').filter(Boolean)
       const lookupResults = await Promise.all(
         comboKeys.map(key =>
-          lookupForBrand(key, { phone: normalizedPhone, email: incomingEmail, env })
+          lookupForBrand(key, { phone: normalizedPhone, email: incomingEmail, byEmail, env })
             .catch(err => ({ customer: null, primaryRecord: null, recentRecords: [], error: String(err?.message || err) }))
         )
       )
@@ -515,11 +508,11 @@ async function handleLookup(request, env) {
       comboKeys.forEach((key, i) => { crmResults[key] = lookupResults[i] })
       result = { ...primaryResult, crmResults }
     } else if (config.backend === 'salesforce') {
-      result = await lookupSalesforce({ phone: normalizedPhone, email: incomingEmail, env })
+      result = await lookupSalesforce({ phone: normalizedPhone, email: incomingEmail, byEmail, env })
     } else if (config.backend === 'hubspot') {
-      result = await lookupHubspot({ phone: normalizedPhone, email: incomingEmail, env })
+      result = await lookupHubspot({ phone: normalizedPhone, email: incomingEmail, byEmail, env })
     } else {
-      result = await lookupMockCrm({ phone: normalizedPhone, email: incomingEmail, env })
+      result = await lookupMockCrm({ phone: normalizedPhone, email: incomingEmail, byEmail, env })
     }
 
     return Response.json({
@@ -580,7 +573,9 @@ async function handleCustomerUpdate(request, env) {
 
     if (!customerId) return Response.json({ error: 'customerId is required' }, { status: 400 })
 
-    if (config.backend === 'custom_crm') {
+    const effectiveBackend = body.targetBackend || config.backend
+
+    if (effectiveBackend === 'custom_crm' || (effectiveBackend !== 'salesforce' && effectiveBackend !== 'hubspot')) {
       const patchBody = {}
       if (typeof name         === 'string') patchBody.name     = name
       if (typeof email        === 'string') patchBody.email    = email
@@ -604,7 +599,7 @@ async function handleCustomerUpdate(request, env) {
       return Response.json({ ok: true, updated: patchData })
     }
 
-    if (config.backend === 'salesforce') {
+    if (effectiveBackend === 'salesforce') {
       const accessToken = await getSalesforceAccessToken(env)
       const patchBody   = {}
 
@@ -633,7 +628,7 @@ async function handleCustomerUpdate(request, env) {
       return Response.json({ ok: true })
     }
 
-    return Response.json({ error: `Unknown backend: ${config.backend}` }, { status: 500 })
+    return Response.json({ error: `Unknown backend: ${effectiveBackend}` }, { status: 500 })
   } catch (err) {
     return Response.json({ error: String(err?.message || err) }, { status: 500 })
   }
@@ -891,17 +886,17 @@ async function handleResetAll(request, env) {
 // ─────────────────────────────────────────
 
 // Route a lookup to the correct backend by brand key
-function lookupForBrand(brandKey, { phone, email, env }) {
-  if (brandKey === 'salesforce') return lookupSalesforce({ phone, email, env })
-  if (brandKey === 'hubspot')    return lookupHubspot({ phone, email, env })
-  return lookupMockCrm({ phone, email, env })
+function lookupForBrand(brandKey, { phone, email, byEmail, env }) {
+  if (brandKey === 'salesforce') return lookupSalesforce({ phone, email, byEmail, env })
+  if (brandKey === 'hubspot')    return lookupHubspot({ phone, email, byEmail, env })
+  return lookupMockCrm({ phone, email, byEmail, env })
 }
 
 // ─────────────────────────────────────────
 // HubSpot Lookup (real API, private app token)
 // ─────────────────────────────────────────
 
-async function lookupHubspot({ phone, email, env }) {
+async function lookupHubspot({ phone, email, byEmail, env }) {
   const token = env.HUBSPOT_TOKEN
   if (!token) throw new Error('HUBSPOT_TOKEN secret not configured')
 
@@ -910,15 +905,23 @@ async function lookupHubspot({ phone, email, env }) {
     'Content-Type': 'application/json'
   }
 
-  // Search contacts by phone or mobilephone
-  const searchPayload = {
-    filterGroups: [
-      { filters: [{ propertyName: 'phone',       operator: 'EQ', value: phone }] },
-      { filters: [{ propertyName: 'mobilephone', operator: 'EQ', value: phone }] }
-    ],
-    properties: ['firstname', 'lastname', 'email', 'phone', 'mobilephone', 'company', 'lifecyclestage'],
-    limit: 1
-  }
+  // Email/webchat channels search by email; voice/SMS search by phone/mobilephone
+  const searchPayload = byEmail && email
+    ? {
+        filterGroups: [
+          { filters: [{ propertyName: 'email', operator: 'EQ', value: email }] }
+        ],
+        properties: ['firstname', 'lastname', 'email', 'phone', 'mobilephone', 'company', 'lifecyclestage'],
+        limit: 1
+      }
+    : {
+        filterGroups: [
+          { filters: [{ propertyName: 'phone',       operator: 'EQ', value: phone }] },
+          { filters: [{ propertyName: 'mobilephone', operator: 'EQ', value: phone }] }
+        ],
+        properties: ['firstname', 'lastname', 'email', 'phone', 'mobilephone', 'company', 'lifecyclestage'],
+        limit: 1
+      }
 
   // Fetch portal ID (needed for ticket URLs) alongside the contact search
   const [searchRes, accountRes] = await Promise.all([
@@ -992,13 +995,21 @@ async function lookupHubspot({ phone, email, env }) {
   return { customer, primaryRecord, recentRecords }
 }
 
-async function lookupMockCrm({ phone, email, env }) {
+async function lookupMockCrm({ phone, email, byEmail, env }) {
   const token = env.MOCK_API_TOKEN
   const base  = env.MOCK_API_BASE_URL
 
+  // Email/webchat: look up by email address; all other channels use phone number
+  const customerParam = byEmail && email
+    ? `email=${encodeURIComponent(email)}`
+    : `number=${encodeURIComponent(phone)}`
+  const casesParam = byEmail && email
+    ? `email=${encodeURIComponent(email)}`
+    : `number=${encodeURIComponent(phone)}`
+
   const [customerRes, casesRes] = await Promise.all([
-    fetch(`${base}/demoapp?token=${encodeURIComponent(token)}&number=${encodeURIComponent(phone)}`),
-    fetch(`${base}/cases?token=${encodeURIComponent(token)}&number=${encodeURIComponent(phone)}`)
+    fetch(`${base}/demoapp?token=${encodeURIComponent(token)}&${customerParam}`),
+    fetch(`${base}/cases?token=${encodeURIComponent(token)}&${casesParam}`)
   ])
 
   const customers = await customerRes.json()
@@ -1036,12 +1047,18 @@ function mapMockCase(row) {
   }
 }
 
-async function lookupSalesforce({ phone, email, env }) {
+async function lookupSalesforce({ phone, email, byEmail, env }) {
   const accessToken = await getSalesforceAccessToken(env)
   const p = escapeSoql(phone)
+  const e = escapeSoql(email)
+
+  // Email/webchat channels look up by email; voice/SMS use phone
+  const whereClause = (byEmail && email)
+    ? `Email='${e}'`
+    : `Phone='${p}' OR MobilePhone='${p}'`
 
   // Fetch up to 5 matches so we can offer a picker if there are duplicates
-  const contactSoql = `SELECT Id,Name,Email,Phone,MobilePhone,MailingAddress,Status__c,LastModifiedDate FROM Contact WHERE Phone='${p}' OR MobilePhone='${p}' ORDER BY LastModifiedDate DESC LIMIT 5`
+  const contactSoql = `SELECT Id,Name,Email,Phone,MobilePhone,MailingAddress,Status__c,LastModifiedDate FROM Contact WHERE ${whereClause} ORDER BY LastModifiedDate DESC LIMIT 5`
   const contactResult = await salesforceQuery(contactSoql, accessToken, env)
   const contactRows = Array.isArray(contactResult.records) ? contactResult.records : []
 

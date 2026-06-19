@@ -1,29 +1,32 @@
 # app — Eno Solutions Management UI
 
-Browser-facing tool hub for managing Zoom Contact Centre demos. All routes are behind Cloudflare Access SSO (Google sign-in). Can be embedded as a Zoom App.
+Browser-facing tool hub for managing Zoom Contact Centre demos. Admin routes are behind Cloudflare Access SSO (Google sign-in). The main app route is publicly accessible so it loads correctly when embedded in Zoom CC.
 
 **Deployed at:** `app.eno.solutions`
 
 ## Routes
 
-| Path | Description |
-|---|---|
-| `GET /` | Landing page — tool grid with links to all tools |
-| `GET /app` | CRM Demo App |
-| `GET /triggers` | ZCC Variables control panel |
-| `GET /nhs` | NHS MSO Status toggle |
-| `GET /webleads` | Webleads address book form |
-| `GET /sms` | Outbound SMS tool |
-| `GET /email` | Outbound Email engagement tool |
-| `GET /admin` | Admin panel |
-| `GET /harness` | Test harness |
-| `GET /api/*` | Internal API routes (returns 401 JSON if unauthenticated) |
+| Path | SSO required | Description |
+|---|---|---|
+| `GET /` | Yes | Landing page — tool grid with links to all tools |
+| `GET /app` | No | CRM Demo App (embedded in Zoom CC) |
+| `GET /triggers` | No | ZCC Variables control panel |
+| `GET /nhs` | No | NHS MSO Status toggle |
+| `GET /webleads` | No | Webleads address book form |
+| `GET /sms` | No | Outbound SMS tool |
+| `GET /email` | No | Outbound Email engagement tool |
+| `GET /admin` | **Yes** | Admin panel |
+| `GET /harness` | No | Test harness |
+| `GET /api/*` | No | Data API routes |
+| `GET /api/admin/*` | **Yes** | Admin API routes (returns 401 JSON if unauthenticated) |
 
 ## Authentication
 
-All routes are protected by Cloudflare Access. The `Cf-Access-Authenticated-User-Email` header is injected by the Access proxy and checked by the worker on every request. Unauthenticated requests receive a sign-in prompt page (HTML) or a 401 JSON error (API routes).
+Cloudflare Access handles authentication entirely at the CDN level — unauthenticated requests to protected routes are intercepted by Access before reaching the Worker. The Worker itself has no auth guard; it reads `Cf-Access-Authenticated-User-Email` only to personalise pages (e.g. landing page footer).
 
-The authenticated user's email is injected into pages as `<meta name="cf-user">` and displayed in the landing page footer.
+Routes like `/app` that are embedded in Zoom Contact Centre must remain unprotected by Access, as Zoom CC performs its own auth via the App SDK (ZAK token).
+
+The authenticated user's email (when present) is injected into pages as `<meta name="cf-user">` and displayed in the landing page footer.
 
 ## Architecture
 
@@ -32,7 +35,7 @@ The authenticated user's email is injected into pages as `<meta name="cf-user">`
 | Runtime | Cloudflare Worker (JavaScript) |
 | Database | Cloudflare D1 (`zcc_crm_demo`) |
 | HTML | Imported at build time from `src/ui/*.html` |
-| Auth | Cloudflare Access (Google SSO) |
+| Auth | Cloudflare Access (Google SSO) — admin routes only |
 | API calls | All tool UIs call `https://api.eno.solutions` cross-origin |
 
 ## Content Security Policy
@@ -60,5 +63,5 @@ npm test         # run vitest tests
 
 Create an Access Application:
 - **Domain:** `app.eno.solutions`
-- **Path:** `/*`
+- **Path:** `/admin` (and `/api/admin/*` separately, or use path prefixes)
 - **Policy:** Allow — Email ends in `@zoom.us` (or your domain)
