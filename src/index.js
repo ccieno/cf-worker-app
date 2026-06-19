@@ -1,16 +1,70 @@
-import APP_HTML    from './ui/app.html'
-import ADMIN_HTML   from './ui/admin.html'
-import HARNESS_HTML from './ui/harness.html'
+import APP_HTML      from './ui/app.html'
+import ADMIN_HTML     from './ui/admin.html'
+import HARNESS_HTML   from './ui/harness.html'
+import LANDING_HTML   from './ui/landing.html'
+import TRIGGERS_HTML  from './ui/triggers.html'
+import NHS_HTML       from './ui/nhs.html'
+import WEBLEADS_HTML  from './ui/webleads.html'
+import SMS_HTML       from './ui/sms.html'
+import EMAIL_HTML     from './ui/email.html'
+
+// Shown when Cloudflare Access has not yet authenticated the request.
+// In production this page is never reached — Access redirects to Google SSO first.
+// It acts as a defence-in-depth fallback only.
+const UNAUTHENTICATED_HTML = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Sign in required</title>
+  <style>
+    body{font-family:system-ui,-apple-system,sans-serif;background:#f0f2f8;min-height:100vh;display:flex;align-items:center;justify-content:center;margin:0;}
+    .card{background:#fff;border-radius:16px;padding:48px 40px;box-shadow:0 6px 30px rgba(0,0,0,.10);text-align:center;max-width:380px;width:calc(100% - 32px);}
+    h1{font-size:20px;font-weight:800;color:#111827;margin-bottom:10px;}
+    p{font-size:14px;color:#6b7280;margin-bottom:28px;line-height:1.5;}
+    a{display:inline-block;padding:12px 28px;background:#0b5cff;color:#fff;border-radius:9px;font-weight:700;font-size:15px;text-decoration:none;}
+    a:hover{background:#0047d0;}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Sign in required</h1>
+    <p>This tool is only accessible to authorised users. Please sign in with your Zoom account to continue.</p>
+    <a href="/cdn-cgi/access/login/app.eno.solutions">Sign in</a>
+  </div>
+</body>
+</html>`
 
 export default {
   async fetch(request, env, ctx) {
     const url  = new URL(request.url)
     const path = url.pathname
 
+    // ── SSO guard (Cloudflare Access injects this header after Google login) ──
+    const userEmail = request.headers.get('Cf-Access-Authenticated-User-Email')
+    if (!userEmail) {
+      if (path.startsWith('/api/')) {
+        return new Response(JSON.stringify({ error: 'Authentication required', status: 401 }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      }
+      return new Response(UNAUTHENTICATED_HTML, {
+        status: 401,
+        headers: { 'Content-Type': 'text/html; charset=utf-8' }
+      })
+    }
+
     // ── Pages ──
-    if (path === '/' || path === '/app')  return htmlResponse(APP_HTML)
-    if (path === '/admin')                return htmlResponse(ADMIN_HTML)
-    if (path === '/harness')              return htmlResponse(HARNESS_HTML)
+    if (path === '/')          return htmlResponse(LANDING_HTML, userEmail)
+    if (path === '/app')       return htmlResponse(APP_HTML)
+    if (path === '/admin')     return htmlResponse(ADMIN_HTML)
+    if (path === '/harness')   return htmlResponse(HARNESS_HTML)
+    if (path === '/triggers')  return htmlResponse(TRIGGERS_HTML)
+    if (path === '/nhs')       return htmlResponse(NHS_HTML)
+    if (path === '/webleads')  return htmlResponse(WEBLEADS_HTML)
+    if (path === '/sms')       return htmlResponse(SMS_HTML)
+    if (path === '/email')     return htmlResponse(EMAIL_HTML)
 
     // ── SVG Logos ──
     if (path.startsWith('/assets/logos/') && path.endsWith('.svg')) {
