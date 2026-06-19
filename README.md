@@ -10,7 +10,7 @@ Browser-facing tool hub for managing Zoom Contact Centre demos. Admin routes are
 |---|---|---|
 | `GET /` | Yes | Landing page — tool grid with links to all tools |
 | `GET /app` | No | CRM Demo App (embedded in Zoom CC) |
-| `GET /triggers` | No | ZCC Variables control panel |
+| `GET /triggers` | No | ZCC Variables control panel (redesigned to match app.eno.solutions design system) |
 | `GET /nhs` | No | NHS MSO Status toggle |
 | `GET /webleads` | No | Webleads address book form |
 | `GET /sms` | No | Outbound SMS tool |
