@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Eno Solutions · Email</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #EFF2F7;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 32px 16px 48px;
+    }
+    .back { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #6b7280; text-decoration: none; margin-bottom: 20px; align-self: flex-start; }
+    .back:hover { color: #111827; }
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 32px rgba(0,0,0,0.10);
+      padding: 40px 44px;
+      width: 100%;
+      max-width: 560px;
+    }
+    .header {
+      display: flex; align-items: center; gap: 14px;
+      margin-bottom: 32px; border-bottom: 1.5px solid #F0F1F3; padding-bottom: 24px;
+    }
+    .logo {
+      width: 44px; height: 44px; background: #0B5CFF; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .logo svg { width: 24px; height: 24px; }
+    .header-text h1 { font-size: 18px; font-weight: 700; color: #111827; letter-spacing: -0.3px; }
+    .header-text p  { font-size: 13px; color: #6B7280; margin-top: 2px; }
+    .section-label {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.6px;
+      text-transform: uppercase; color: #9CA3AF;
+      margin: 24px 0 14px;
+    }
+    .section-label:first-of-type { margin-top: 0; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+    label .required { color: #EF4444; margin-left: 2px; }
+    label .optional { font-size: 11px; font-weight: 400; color: #9CA3AF; margin-left: 4px; }
+    select, input[type="text"], input[type="email"], textarea {
+      width: 100%; padding: 10px 14px;
+      border: 1.5px solid #D1D5DB; border-radius: 8px;
+      font-size: 14px; color: #111827; background: #fff;
+      outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+      appearance: none; -webkit-appearance: none;
+    }
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; cursor: pointer;
+    }
+    select:focus, input:focus, textarea:focus {
+      border-color: #0B5CFF; box-shadow: 0 0 0 3px rgba(11,92,255,0.12);
+    }
+    select:disabled { background-color: #F9FAFB; color: #9CA3AF; cursor: not-allowed; }
+    textarea { resize: vertical; line-height: 1.5; font-family: inherit; min-height: 130px; }
+    .btn-send {
+      width: 100%; padding: 13px;
+      background: #0B5CFF; color: #fff; border: none; border-radius: 9px;
+      font-size: 15px; font-weight: 700; cursor: pointer; letter-spacing: 0.1px;
+      transition: background 0.15s, transform 0.1s;
+      margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-send:hover:not(:disabled) { background: #0047D0; }
+    .btn-send:active:not(:disabled) { transform: scale(0.99); }
+    .btn-send:disabled { opacity: 0.55; cursor: not-allowed; }
+    .status {
+      margin-top: 22px; padding: 13px 16px; border-radius: 9px;
+      font-size: 14px; line-height: 1.5; display: none; animation: fadeIn 0.2s ease;
+    }
+    .status.success { display: block; background: #ECFDF5; color: #065F46; border: 1.5px solid #A7F3D0; }
+    .status.error   { display: block; background: #FEF2F2; color: #991B1B; border: 1.5px solid #FECACA; }
+    .status.loading { display: block; background: #EFF6FF; color: #1E40AF; border: 1.5px solid #BFDBFE; }
+    .status .msg-id { font-size: 12px; color: #047857; margin-top: 5px; font-family: monospace; }
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2.5px solid currentColor; border-right-color: transparent;
+      border-radius: 50%; animation: spin 0.55s linear infinite; flex-shrink: 0;
+    }
+    @keyframes spin   { to { transform: rotate(360deg); } }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+    .footer { margin-top: 24px; font-size: 12px; color: #9CA3AF; text-align: center; }
+    .divider { border: none; border-top: 1.5px solid #F0F1F3; margin: 4px 0 20px; }
+    .page-toggle {
+      display: flex; gap: 8px; margin-bottom: 20px;
+      background: #E8EDFB; border-radius: 10px; padding: 4px;
+    }
+    .page-toggle a {
+      flex: 1; text-align: center; padding: 8px 0;
+      border-radius: 7px; font-size: 13px; font-weight: 600;
+      text-decoration: none; color: #6B7280;
+      transition: background 0.15s, color 0.15s;
+    }
+    .page-toggle a.active {
+      background: #fff; color: #0B5CFF;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+    }
+    .page-toggle a:not(.active):hover { color: #374151; }
+  </style>
+</head>
+<body>
+  <a class="back" href="/">← Back to tools</a>
+  <div class="card">
+    <nav class="page-toggle">
+      <a href="/sms">&#128172; SMS</a>
+      <a href="/email" class="active">&#9993; Email</a>
+    </nav>
+    <div class="header">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+          <polyline points="22,6 12,13 2,6"/>
+        </svg>
+      </div>
+      <div class="header-text">
+        <h1>Contact Centre Email</h1>
+        <p>Create an outbound email engagement</p>
+      </div>
+    </div>
+
+    <form id="emailForm" novalidate>
+      <p class="section-label">Routing</p>
+      <div class="form-group">
+        <label for="flowEntry">Work Item Flow<span class="required">*</span></label>
+        <select id="flowEntry" name="flowEntry" required disabled>
+          <option value="">Loading flows…</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="workItemType">Work Item Type<span class="required">*</span></label>
+        <select id="workItemType" name="workItemType" required disabled>
+          <option value="">Loading types…</option>
+        </select>
+      </div>
+
+      <hr class="divider" />
+
+      <p class="section-label">Customer</p>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="consumerName">Full Name<span class="required">*</span></label>
+          <input type="text" id="consumerName" value="Joe Bloggs" required />
+        </div>
+        <div class="form-group">
+          <label for="consumerEmail">Email Address<span class="required">*</span></label>
+          <input type="email" id="consumerEmail" value="joe@eno.solutions" required />
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="consumerExternalId">External / Customer ID<span class="optional">(optional)</span></label>
+        <input type="text" id="consumerExternalId" placeholder="e.g. CRM-12345" />
+      </div>
+
+      <hr class="divider" />
+
+      <p class="section-label">Work Item</p>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="workItemName">Work Item Name<span class="required">*</span></label>
+          <input type="text" id="workItemName" placeholder="e.g. Info request: order #78432" required />
+        </div>
+        <div class="form-group">
+          <label for="referenceId">Reference / Order ID<span class="optional">(optional)</span></label>
+          <input type="text" id="referenceId" placeholder="e.g. ORD-2026-78432" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="workItemDesc">Work Item Description<span class="optional">(optional)</span></label>
+        <input type="text" id="workItemDesc" placeholder="Brief internal description for agents" />
+      </div>
+
+      <hr class="divider" />
+
+      <p class="section-label">Message</p>
+      <div class="form-group">
+        <label for="messageBody">Message Body<span class="required">*</span></label>
+        <textarea id="messageBody" placeholder="Enter the email message body…" required></textarea>
+      </div>
+
+      <button type="submit" class="btn-send" id="sendBtn" disabled>Send Email</button>
+    </form>
+
+    <div class="status" id="status" role="alert" aria-live="polite"></div>
+  </div>
+  <p class="footer">Zoom Contact Centre · Outbound Email</p>
+
+  <script>
+    const API_BASE   = 'https://api.eno.solutions';
+    const flowSelect = document.getElementById('flowEntry');
+    const typeSelect = document.getElementById('workItemType');
+    const sendBtn    = document.getElementById('sendBtn');
+    const statusDiv  = document.getElementById('status');
+    const form       = document.getElementById('emailForm');
+
+    function showStatus(type, html) {
+      statusDiv.className = 'status ' + type;
+      statusDiv.innerHTML = html;
+    }
+
+    async function loadSelectors() {
+      const [flowsRes, typesRes] = await Promise.all([
+        fetch(`${API_BASE}/email/api/flows`),
+        fetch(`${API_BASE}/email/api/work-item-types`),
+      ]);
+
+      try {
+        if (!flowsRes.ok) throw new Error('HTTP ' + flowsRes.status);
+        const flows = await flowsRes.json();
+        flowSelect.innerHTML = '';
+        if (!Array.isArray(flows) || flows.length === 0) {
+          flowSelect.innerHTML = '<option value="">No work item flows found</option>';
+        } else {
+          flows.forEach(f => {
+            const opt = document.createElement('option');
+            opt.value = f.entryId;
+            opt.textContent = f.label;
+            flowSelect.appendChild(opt);
+          });
+          flowSelect.disabled = false;
+        }
+      } catch (err) {
+        flowSelect.innerHTML = '<option value="">Failed to load flows</option>';
+        showStatus('error', 'Could not load flows: ' + err.message);
+      }
+
+      try {
+        if (!typesRes.ok) throw new Error('HTTP ' + typesRes.status);
+        const types = await typesRes.json();
+        typeSelect.innerHTML = '';
+        if (!Array.isArray(types) || types.length === 0) {
+          typeSelect.innerHTML = '<option value="">No types configured</option>';
+        } else {
+          types.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.id;
+            opt.textContent = t.name;
+            typeSelect.appendChild(opt);
+          });
+          const preferred = Array.from(typeSelect.options).find(o => o.text === 'Order Confirmation');
+          if (preferred) typeSelect.value = preferred.value;
+          typeSelect.disabled = false;
+        }
+      } catch (err) {
+        typeSelect.innerHTML = '<option value="">Failed to load types</option>';
+      }
+
+      if (!flowSelect.disabled && !typeSelect.disabled) sendBtn.disabled = false;
+    }
+
+    function val(id) { return document.getElementById(id).value.trim(); }
+    function isEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const entryId            = flowSelect.value;
+      const workItemTypeId     = typeSelect.value;
+      const consumerName       = val('consumerName');
+      const consumerEmail      = val('consumerEmail');
+      const consumerExternalId = val('consumerExternalId');
+      const workItemName       = val('workItemName');
+      const workItemDesc       = val('workItemDesc');
+      const referenceId        = val('referenceId');
+      const messageBody        = val('messageBody');
+
+      if (!entryId)        { showStatus('error', 'Please select a work item flow.'); return; }
+      if (!workItemTypeId) { showStatus('error', 'Please select a work item type.'); return; }
+      if (!consumerName)   { showStatus('error', 'Please enter the customer name.'); document.getElementById('consumerName').focus(); return; }
+      if (!isEmail(consumerEmail)) { showStatus('error', 'Please enter a valid email address.'); document.getElementById('consumerEmail').focus(); return; }
+      if (!workItemName)   { showStatus('error', 'Please enter a work item name.'); document.getElementById('workItemName').focus(); return; }
+      if (!messageBody)    { showStatus('error', 'Please enter a message body.'); document.getElementById('messageBody').focus(); return; }
+
+      sendBtn.disabled = true;
+      showStatus('loading', '<span class="spinner"></span>&nbsp; Creating engagement…');
+
+      try {
+        const res = await fetch(`${API_BASE}/email/api/send`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ entryId, workItemTypeId, consumerName, consumerEmail, consumerExternalId, workItemName, workItemDesc, referenceId, messageBody }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showStatus('success',
+            '&#10003;&nbsp; Engagement created — email will be sent by the flow.' +
+            (data.engagement_id ? '<div class="msg-id">Engagement ID: ' + data.engagement_id + '</div>' : '') +
+            (data.session_id    ? '<div class="msg-id">Session ID: '    + data.session_id    + '</div>' : '')
+          );
+        } else {
+          const errMsg = data?.error?.message || (typeof data?.error === 'string' ? data.error : null) || JSON.stringify(data.error || data);
+          showStatus('error', '&#10007;&nbsp; ' + errMsg);
+        }
+      } catch (err) {
+        showStatus('error', '&#10007;&nbsp; Network error: ' + err.message);
+      } finally {
+        sendBtn.disabled = false;
+      }
+    });
+
+    // Auto-incrementing Order ID
+    (function initOrderId() {
+      const ORD_START = 50624;
+      const KEY = 'orderCounter';
+      let n = parseInt(localStorage.getItem(KEY) ?? ORD_START, 10);
+      if (isNaN(n)) n = ORD_START;
+      const orderId = 'ORD-' + String(n).padStart(6, '0');
+      localStorage.setItem(KEY, n + 1);
+      document.getElementById('referenceId').value  = orderId;
+      document.getElementById('workItemName').value = 'New Order ' + orderId;
+      document.getElementById('workItemDesc').value = 'New Order ' + orderId;
+      document.getElementById('messageBody').value  = 'Your order ' + orderId + ' has shipped, please await further updates';
+    })();
+
+    loadSelectors();
+  </script>
+</body>
+</html>
