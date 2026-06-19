@@ -179,15 +179,19 @@ const LOGOS = {
 // Utilities
 // ─────────────────────────────────────────
 
-function htmlResponse(html) {
-  return new Response(html, {
+function htmlResponse(html, userEmail) {
+  let body = html
+  if (userEmail) {
+    body = body.replace('</head>', `  <meta name="cf-user" content="${userEmail}">\n</head>`)
+  }
+  return new Response(body, {
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
       'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
       'X-Content-Type-Options': 'nosniff',
       'Referrer-Policy': 'strict-origin-when-cross-origin',
       'Content-Security-Policy':
-        "default-src 'self'; script-src 'self' 'unsafe-inline' https://appssdk.zoom.us; style-src 'self' 'unsafe-inline'; connect-src 'self' https://portal.zoomdemos.com https://eno-solutions-dev-ed.develop.my.salesforce.com https://api.hubapi.com; img-src 'self' data: https:;"
+        "default-src 'self'; script-src 'self' 'unsafe-inline' https://appssdk.zoom.us; style-src 'self' 'unsafe-inline'; connect-src 'self' https://portal.zoomdemos.com https://eno-solutions-dev-ed.develop.my.salesforce.com https://api.hubapi.com https://api.eno.solutions; img-src 'self' data: https:; frame-ancestors https://zoom.us https://*.zoom.us"
     }
   })
 }
