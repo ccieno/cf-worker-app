@@ -181,7 +181,7 @@ function htmlResponse(html, userEmail) {
       'X-Content-Type-Options': 'nosniff',
       'Referrer-Policy': 'strict-origin-when-cross-origin',
       'Content-Security-Policy':
-        "default-src 'self'; script-src 'self' 'unsafe-inline' https://appssdk.zoom.us; style-src 'self' 'unsafe-inline'; connect-src 'self' https://portal.zoomdemos.com https://eno-solutions-dev-ed.develop.my.salesforce.com https://api.hubapi.com https://api.eno.solutions; img-src 'self' data: https:; frame-ancestors https://zoom.us https://*.zoom.us"
+        "default-src 'self'; script-src 'self' 'unsafe-inline' https://appssdk.zoom.us; style-src 'self' 'unsafe-inline'; connect-src 'self' https://portal.zoomdemos.com https://YOUR_ORG.my.salesforce.com https://api.hubapi.com https://api.eno.solutions; img-src 'self' data: https:; frame-ancestors https://zoom.us https://*.zoom.us"
     }
   })
 }

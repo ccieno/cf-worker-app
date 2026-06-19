@@ -4,7 +4,7 @@ set -euo pipefail
 ACCOUNT_ID="${ACCOUNT_ID:-b1311a3efb25667db13a32cf4760998f}"
 APP_DOMAIN="${APP_DOMAIN:-app.eno.solutions}"
 APP_NAME="${APP_NAME:-App Eno Solutions}"
-ALLOW_EMAIL="${ALLOW_EMAIL:-stepheneno@gmail.com}"
+ALLOW_EMAIL="${ALLOW_EMAIL:-YOUR_EMAIL@your-domain.com}"
 SESSION_DURATION="${SESSION_DURATION:-24h}"
 
 if [[ -z "${CLOUDFLARE_API_TOKEN:-}" ]]; then
